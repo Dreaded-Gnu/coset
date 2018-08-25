@@ -82,6 +82,9 @@ export class Transport extends EventEmitter {
     this.peerConnection = null;
     this.dataChannel = null;
 
+    // Prepare webrtc
+    this.initialize_webrtc();
+
     // Bind handler
     this.socket
       .on( "message", this.handle_socket_message.bind( this ) )
@@ -124,6 +127,28 @@ export class Transport extends EventEmitter {
   }
 
   /**
+   * Initialize webrtc itself
+   *
+   * @private
+   * @memberof Transport
+   */
+  private initialize_webrtc(): void {
+    // create peer connection and data channel
+    this.peerConnection = new wrtc.RTCPeerConnection();
+    this.dataChannel = this.peerConnection.createDataChannel(
+      "data", {
+        maxRetransmits: 0,
+        ordered: false,
+      } );
+
+    // bind on data event listener
+    this.peerConnection.addEventListener( "datachannel", this.handle_connection_datachannel.bind( this ) );
+
+    // bind ice candidate listener
+    this.peerConnection.addEventListener( "icecandidate", this.handle_connection_ice_candidate.bind( this ) );
+  }
+
+  /**
    * Answer webrtc ice candidate
    *
    * @private
@@ -145,6 +170,18 @@ export class Transport extends EventEmitter {
   }
 
   /**
+   * Answer webrtc answer
+   *
+   * @private
+   * @param {RTCSessionDescriptionInit} payload
+   * @returns {Promise< void >}
+   * @memberof Transport
+   */
+  private async answer_webrtc_answer( payload: RTCSessionDescriptionInit ): Promise< void > {
+    await this.peerConnection.setRemoteDescription( new RTCSessionDescription( payload ) );
+  }
+
+  /**
    * Answer webrtc offer
    *
    * @private
@@ -153,20 +190,6 @@ export class Transport extends EventEmitter {
    * @memberof Transport
    */
   private async answer_webrtc_offer( payload: RTCSessionDescriptionInit ): Promise< void > {
-    // create peer connection and data channel
-    this.peerConnection = new wrtc.RTCPeerConnection();
-    this.dataChannel = this.peerConnection.createDataChannel(
-      "data", {
-        maxRetransmits: 0,
-        ordered: false,
-      } );
-
-    // bind on data event listener
-    this.peerConnection.addEventListener( "datachannel", this.handle_connection_datachannel.bind( this ) );
-
-    // bind ice candidate listener
-    this.peerConnection.addEventListener( "icecandidate", this.handle_connection_ice_candidate.bind( this ) );
-
     // set remote description
     await this.peerConnection.setRemoteDescription( payload );
 
@@ -284,7 +307,7 @@ export class Transport extends EventEmitter {
    * @param {IMessageStructure} msg
    * @memberof Transport
    */
-  private async initialize_webrtc( msg: IMessageStructure ): Promise< void > {
+  private async handle_socket_initialize_webrtc( msg: IMessageStructure ): Promise< void > {
     if (
       this.connected
       || "undefined" === typeof msg.type
@@ -303,8 +326,7 @@ export class Transport extends EventEmitter {
         break;
 
       case MessageType.webrtc.answer:
-        // TODO: Handle webrtc offer
-        throw new Error( "Create offer currently not supported!" );
+        this.answer_webrtc_answer( msg.payload );
         break;
 
       case MessageType.webrtc.candidate:
@@ -339,7 +361,7 @@ export class Transport extends EventEmitter {
       ! this.connected
       && "undefined" !== typeof msg.type
     ) {
-      await this.initialize_webrtc( msg );
+      await this.handle_socket_initialize_webrtc( msg );
       return;
     }
 

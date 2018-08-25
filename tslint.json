@@ -1,0 +1,11 @@
+{
+  "lintOptions": {
+    "typeCheck": true
+  },
+  "extends": "./node_modules/tslint/lib/configs/recommended",
+  "rules": {
+    "indent": [ true, "spaces", 2 ],
+    "only-arrow-functions": false,
+    "completed-docs": true
+  }
+}

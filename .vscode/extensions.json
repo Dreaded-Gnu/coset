@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    "dzannotti.vscode-babel-coloring",
+    "waderyan.babelrc",
+    "PeterJausovec.vscode-docker",
+    "joelday.docthis",
+    "dbaeumer.vscode-eslint",
+    "waderyan.gitblame",
+    "donjayamanne.githistory",
+    "codezombiech.gitignore",
+    "dbaeumer.jshint",
+    "ms-vscode.theme-markdownkit",
+    "DavidAnson.vscode-markdownlint",
+    "eg2.vscode-npm-script",
+    "christian-kohler.npm-intellisense",
+    "shinnn.stylelint",
+    "eg2.tslint",
+    "wayou.vscode-todo-highlight",
+    "mikestead.dotenv"
+  ]
+}

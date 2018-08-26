@@ -133,19 +133,28 @@ export class Transport extends EventEmitter {
    * @memberof Transport
    */
   private initialize_webrtc(): void {
-    // create peer connection and data channel
-    this.peerConnection = new wrtc.RTCPeerConnection();
-    this.dataChannel = this.peerConnection.createDataChannel(
-      "data", {
-        maxRetransmits: 0,
-        ordered: false,
-      } );
+    try {
+      const rtcPeer: typeof RTCPeerConnection =
+        wrtc.RTCPeerConnection
+        || ( window as any ).RTCPeerConnection
+        || RTCPeerConnection;
 
-    // bind on data event listener
-    this.peerConnection.addEventListener( "datachannel", this.handle_connection_datachannel.bind( this ) );
+      // create peer connection and data channel
+      this.peerConnection = new rtcPeer();
+      this.dataChannel = this.peerConnection.createDataChannel(
+        "data", {
+          maxRetransmits: 0,
+          ordered: false,
+        } );
 
-    // bind ice candidate listener
-    this.peerConnection.addEventListener( "icecandidate", this.handle_connection_ice_candidate.bind( this ) );
+      // bind on data event listener
+      this.peerConnection.addEventListener( "datachannel", this.handle_connection_datachannel.bind( this ) );
+
+      // bind ice candidate listener
+      this.peerConnection.addEventListener( "icecandidate", this.handle_connection_ice_candidate.bind( this ) );
+    } catch ( e ) {
+      throw new Error( "WebRTC DataChannel are not supported!" );
+    }
   }
 
   /**

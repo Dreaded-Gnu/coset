@@ -35,4 +35,7 @@ WebRTC DataChannel connections are made by using internal websocket signaling se
   - [ ] Windows
 - [ ] Add ci test suite for windows based testing
 - [ ] Add greenkeeper dependency management
+- [x] Add code of conduct file
+- [ ] Add content within contributing markdown
+- [ ] Add github issue templates
 - [ ] Think about providing websocket fallback, when rtc datachannels are not supported

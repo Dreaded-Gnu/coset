@@ -16,6 +16,7 @@
     "shinnn.stylelint",
     "eg2.tslint",
     "wayou.vscode-todo-highlight",
-    "mikestead.dotenv"
+    "mikestead.dotenv",
+    "bierner.markdown-preview-github-styles"
   ]
 }

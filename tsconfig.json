@@ -9,21 +9,12 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "target": "es6",
-    "sourceMap": false,
-    "outDir": "./lib",
-    "baseUrl": "./src"
+    "sourceMap": false
   },
-  "typeRoots": [
-    "./node_modules/@types"
-  ],
   "lib": [
     "node",
     "es6",
     "dom"
-  ],
-  "include": [
-    "src/**/*.ts",
-    "typings/**/*.d.ts"
   ],
   "exclude": [
     "node_modules"

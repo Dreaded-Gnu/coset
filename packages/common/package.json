@@ -1,15 +1,15 @@
 {
-  "name": "coset",
+  "name": "@coset/common",
   "private": true,
   "version": "0.1.0",
-  "description": "communication socket via websocket and webrtc data channel",
+  "description": "communication socket via websocket and webrtc data channel - common",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "lerna run test",
-    "lint": "lerna run lint",
-    "build": "lerna run build",
-    "bootstrap": "npm install && lerna bootstrap"
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "lint": "tslint --project tsconfig.json --config ../../tslint.json",
+    "prebuild": "rimraf ./lib",
+    "build": "tsc --project tsconfig.json"
   },
   "repository": {
     "type": "git",
@@ -32,18 +32,7 @@
   "engines": {
     "node": "6.x || 8.x || 10.x"
   },
-  "devDependencies": {
-    "@types/jest": "23.3.1",
-    "jest": "23.5.0",
-    "lerna": "3.1.4",
-    "pre-commit": "1.2.2",
-    "rimraf": "2.6.2",
-    "ts-jest": "23.1.4",
-    "tslint": "5.11.0",
-    "typescript": "3.0.1"
-  },
-  "pre-commit": [
-    "test",
-    "lint"
-  ]
+  "dependencies": {
+    "@types/node": "10.9.2"
+  }
 }

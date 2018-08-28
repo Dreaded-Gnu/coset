@@ -12,11 +12,12 @@ WebRTC DataChannel connections are made by using internal websocket signaling se
 ## ToDo
 
 - [ ] Add heartbeat to server with disconnect on no in-time answer
-  - [ ] Extend server config by attribute `server` restricted to https server
-  - [ ] Extend server config by ping timeout attribute as number with default of 10 seconds
+  - [x] Extend server config by attribute `server` restricted to https server
+  - [x] Extend server config by ping timeout attribute as number with default of 10 seconds
+  - [x] Remove not yet used config options from server config interface
   - [ ] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [ ] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
-  - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer
+  - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe ( timeout interval )
 - [ ] Change data transfer for websockets and rtc to binary
   - [ ] Support encoding of data
   - [ ] Support decoding of data

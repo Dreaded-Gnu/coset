@@ -1,4 +1,6 @@
 
+import { Server } from "https";
+
 /**
  * Server config
  *
@@ -7,18 +9,18 @@
  */
 export interface IServerConfig {
   /**
-   * Websocket host
+   * HTTPS server instance
    *
-   * @type {string}
+   * @type {Server}
    * @memberof IServerConfig
    */
-  host?: string;
+  server?: Server;
 
   /**
-   * Websocket port
+   * Ping timeout (default: 10000ms -> 10s)
    *
    * @type {number}
    * @memberof IServerConfig
    */
-  port?: number;
+  pingTimeout?: number;
 }

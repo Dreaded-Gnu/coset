@@ -49,14 +49,24 @@ export class Server extends EventEmitter {
     // call parent constructor
     super();
 
-    // handle server passed via config
-    if ( server ) {
-      // create socket with server only
-      this.socketServer = new WebSocket.Server( { server } );
-    } else {
-      // create socket with option object
-      this.socketServer = new WebSocket.Server( option );
+    // build server config
+    let serverOption: IServerConfig = {
+      pingTimeout: 10000,
+      server,
+    };
+
+    // Merge options
+    if ( option ) {
+      serverOption = { ...serverOption, ...option };
     }
+
+    // set server
+    if ( ! serverOption.server ) {
+      throw new Error( "No server passed existing!" );
+    }
+
+    // create socket server
+    this.socketServer = new WebSocket.Server( serverOption );
 
     // setup server
     this.socketServer

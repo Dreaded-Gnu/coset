@@ -18,6 +18,7 @@ WebRTC DataChannel connections are made by using internal websocket signaling se
   - [ ] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [ ] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
   - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe ( timeout interval )
+- [ ] Add verbose output activated, when setting specific environment variable
 - [ ] Change data transfer for websockets and rtc to binary
   - [ ] Support encoding of data
   - [ ] Support decoding of data
@@ -35,7 +36,8 @@ WebRTC DataChannel connections are made by using internal websocket signaling se
   - [ ] Windows
 - [ ] Add ci test suite for windows based testing
 - [ ] Add greenkeeper dependency management
+- [ ] Create documentation
+- [ ] Add automatic changelog generation
 - [x] Add code of conduct file
 - [ ] Add content within contributing markdown
 - [ ] Add github issue templates
-- [ ] Think about providing websocket fallback, when rtc datachannels are not supported

@@ -1,4 +1,3 @@
-
 // Node dependencies
 import { EventEmitter } from "events";
 import { IncomingMessage as HttpIncomingMessage } from "http";
@@ -33,10 +32,10 @@ export class Server extends EventEmitter {
    * Transport map
    *
    * @private
-   * @type {Map< string, Transport >}
+   * @type {Map<string, Transport>}
    * @memberof Server
    */
-  private socketMap: Map< string, Transport >;
+  private socketMap: Map<string, Transport>;
 
   /**
    * Creates an instance of Server.
@@ -45,7 +44,7 @@ export class Server extends EventEmitter {
    * @param {IServerConfig} option
    * @memberof Server
    */
-  public constructor( server?: HttpsServer | null, option?: IServerConfig ) {
+  public constructor(server?: HttpsServer | null, option?: IServerConfig) {
     // call parent constructor
     super();
 
@@ -56,23 +55,23 @@ export class Server extends EventEmitter {
     };
 
     // Merge options
-    if ( option ) {
+    if (option) {
       serverOption = { ...serverOption, ...option };
     }
 
     // set server
-    if ( ! serverOption.server ) {
-      throw new Error( "No server passed existing!" );
+    if (!serverOption.server) {
+      throw new Error("No server passed existing!");
     }
 
     // create socket server
-    this.socketServer = new WebSocket.Server( serverOption );
+    this.socketServer = new WebSocket.Server(serverOption);
 
     // setup server
     this.socketServer
-      .on( "connection", this.handle_connection.bind( this ) )
-      .on( "error", this.handle_error.bind( this ) )
-      .on( "listening", this.handle_listen.bind( this ) );
+      .on("connection", this.handle_connection.bind(this))
+      .on("error", this.handle_error.bind(this))
+      .on("listening", this.handle_listen.bind(this));
 
     // initialize socket map
     this.socketMap = new Map();
@@ -95,20 +94,23 @@ export class Server extends EventEmitter {
    * @param {WebSocket} socket
    * @memberof Server
    */
-  private handle_connection( webSocket: WebSocket, request: HttpIncomingMessage ): void {
+  private handle_connection(
+    webSocket: WebSocket,
+    request: HttpIncomingMessage,
+  ): void {
     let socketId: string;
     do {
       socketId = NodeUuid();
-    } while ( this.socketMap.has( socketId ) );
+    } while (this.socketMap.has(socketId));
 
     // Create socket instance
-    const socket: Transport = new Transport( socketId, webSocket );
+    const socket: Transport = new Transport(socketId, webSocket);
 
     // Add to map
-    this.socketMap.set( socketId, socket );
+    this.socketMap.set(socketId, socket);
 
     // bind connection handler for passing socket out
-    socket.on( "connection", this.handle_socket_connected.bind( this ) );
+    socket.on("connection", this.handle_socket_connected.bind(this));
   }
 
   /**
@@ -118,8 +120,8 @@ export class Server extends EventEmitter {
    * @param {Socket} socket
    * @memberof Server
    */
-  private handle_socket_connected( socket: Transport ): void {
-    this.emit( "connection", Transport );
+  private handle_socket_connected(socket: Transport): void {
+    this.emit("connection", Transport);
   }
 
   /**
@@ -129,8 +131,8 @@ export class Server extends EventEmitter {
    * @param {Error} error
    * @memberof Server
    */
-  private handle_error( error: Error ): void {
-    this.emit( "error", Error );
+  private handle_error(error: Error): void {
+    this.emit("error", Error);
   }
 
   /**
@@ -140,6 +142,6 @@ export class Server extends EventEmitter {
    * @memberof Server
    */
   private handle_listen(): void {
-    this.emit( "listening" );
+    this.emit("listening");
   }
 }

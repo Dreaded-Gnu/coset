@@ -29,10 +29,10 @@
   "homepage": "https://github.com/Dreaded-Gnu/coset#readme",
   "readme": "README.md",
   "engines": {
-    "node": "6.x || 8.x || 10.x"
+    "node": "8.x || 10.x"
   },
   "dependencies": {
-    "@types/node": "10.9.2",
+    "@types/node": "10.9.3",
     "@types/uuid": "3.4.3",
     "@types/ws": "6.0.0",
     "uuid": "3.3.2",

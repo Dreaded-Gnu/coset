@@ -3,9 +3,13 @@
     "typeCheck": true
   },
   "extends": "./node_modules/tslint/lib/configs/recommended",
+  "rulesDirectory": [
+    "tslint-plugin-prettier"
+  ],
   "rules": {
     "indent": [ true, "spaces", 2 ],
     "only-arrow-functions": false,
-    "completed-docs": true
+    "completed-docs": true,
+    "prettier": true
   }
 }

@@ -6,6 +6,7 @@ coset ( **CO**mmunication sock**ET** ) is a communication library for client ser
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Dreaded-Gnu/coset/blob/master/LICENSE.md)
 [![lerna](https://img.shields.io/badge/maintained%20with-lerna-cc00ff.svg)](https://lernajs.io/)
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
 ## Description
 
@@ -19,23 +20,7 @@ npm install @coset/server --save
 
 ## How to use
 
-For WebRTC especially DataChannels an SSL encryption is enforced. The following example attaches `@coset/server` to a plain Node.JS HTTPS server:
-
-```js
-const httpsServer = require( 'https' ).createServer( {
-  "cert": readFileSync( "cert.pem" ),
-  "key": readFileSync( "key.pem" ),
-  "passphrase": "top-secret",
-} );
-
-const cosetServer = new require( '@coset/server' ).Server( httpsServer );
-cosetServer.on('connection', ( socket ) => {
-  client.on( 'message', () => {} );
-  client.on( 'disconnect', () => {} );
-});
-
-server.listen(3000);
-```
+For WebRTC especially DataChannels an SSL encryption is enforced, so you're going to need an https server. For usage examples have a look at the [example directory](example/).
 
 ## ToDo
 
@@ -48,8 +33,38 @@ server.listen(3000);
   - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe ( timeout interval )
 - [ ] Add verbose output activated, when setting specific environment variable
 - [ ] Change data transfer for websockets and rtc to binary
-  - [ ] Support encoding of data
-  - [ ] Support decoding of data
+  - [ ] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive
+
+    ```js
+    /*
+     * handler will be used for encode of data
+     * before send and decode of data after receive
+     * before passing data out
+     */
+    client.use(
+      Message.Position, {
+        a: Type.Char,
+        b: Type.Int,
+        c: Type.Short,
+        d: Type.Float,
+        e: Type.String,
+      }
+    );
+
+    /*
+     * handler called after decode has been done
+     */
+    client.on(
+      Message.Position,
+      ( data ) => {
+        /* ... do something with data structure ... */
+      }
+    );
+    ```
+
+  - [ ] Implement encoding of data before send, when listener is set.
+  - [ ] Implement decoding of data after receive, when listener is set.
+  - [ ] Throw errors, when trying to send/receive a message type without encode/decode handler
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc
   - [ ] Support packet fragmentation
@@ -64,6 +79,10 @@ server.listen(3000);
   - [ ] Windows
 - [ ] Add ci test suite for windows based testing
 - [ ] Add greenkeeper dependency management
+- [x] Add prettier
+  - [x] Include prettier within tslint for packages
+  - [ ] Add and include prettier to eslint for plain javascript examples
+  - [ ] Add and include prettier to tslint for typescript examples
 - [ ] Create documentation
   - [ ] Create wiki documentation about how to use library
   - [ ] Create example projects

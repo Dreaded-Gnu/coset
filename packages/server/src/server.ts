@@ -38,6 +38,15 @@ export class Server extends EventEmitter {
   private socketMap: Map<string, Transport>;
 
   /**
+   * Server config options
+   *
+   * @private
+   * @type {IServerConfig}
+   * @memberof Server
+   */
+  private option: IServerConfig;
+
+  /**
    * Creates an instance of Server.
    *
    * @param {HttpsServer} server
@@ -75,6 +84,7 @@ export class Server extends EventEmitter {
 
     // initialize socket map
     this.socketMap = new Map();
+    this.option = serverOption;
   }
 
   /**
@@ -104,7 +114,7 @@ export class Server extends EventEmitter {
     } while (this.socketMap.has(socketId));
 
     // Create socket instance
-    const socket: Transport = new Transport(socketId, webSocket);
+    const socket: Transport = new Transport(socketId, webSocket, this.option);
 
     // Add to map
     this.socketMap.set(socketId, socket);

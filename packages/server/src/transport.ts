@@ -5,6 +5,7 @@ import { EventEmitter } from "events";
 import { default as WebSocket } from "ws";
 
 // Import local dependencies
+import { IServerConfig } from "./server/iconfig";
 import { TransportSocket } from "./transport/socket";
 import { TransportWebrtc } from "./transport/webrtc";
 
@@ -50,7 +51,7 @@ export class Transport extends EventEmitter {
    * @param {WebSocket} socket
    * @memberof Transport
    */
-  constructor(id: string, socket: WebSocket) {
+  constructor(id: string, socket: WebSocket, option: IServerConfig) {
     // Call parent constructor
     super();
 
@@ -58,8 +59,8 @@ export class Transport extends EventEmitter {
     this.id = id;
 
     // Setup transports
-    this.socket = new TransportSocket(socket);
-    this.webrtc = new TransportWebrtc(this.socket);
+    this.socket = new TransportSocket(socket, option);
+    this.webrtc = new TransportWebrtc(this.socket, option);
 
     // handle connection and pass instance out
     this.webrtc.on("connection", this.handle_open.bind(this));

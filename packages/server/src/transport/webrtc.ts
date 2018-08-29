@@ -8,6 +8,7 @@ import * as wrtc from "wrtc";
 // Import local dependencies
 import { IMessageStructure } from "./../message/istructure";
 import MessageType from "./../message/itype";
+import { IServerConfig } from "./../server/iconfig";
 import { TransportSocket } from "./socket";
 
 /**
@@ -55,17 +56,29 @@ export class TransportWebrtc extends EventEmitter {
   private socket: TransportSocket;
 
   /**
+   * Server config
+   *
+   * @private
+   * @type {IServerConfig}
+   * @memberof TransportWebrtc
+   */
+  private option: IServerConfig;
+
+  /**
    * Creates an instance of TransportWebrtc.
    *
    * @param {TransportSocket} socket
+   * @param {IServerConfig} option
    * @memberof TransportWebrtc
    */
-  constructor(socket: TransportSocket) {
+  constructor(socket: TransportSocket, option: IServerConfig) {
     // parent constructor
     super();
 
     // save socket transport
     this.socket = socket;
+    // cache option
+    this.option = option;
 
     // bind necessary socket handlers
     this.socket
@@ -108,10 +121,11 @@ export class TransportWebrtc extends EventEmitter {
    * Answer webrtc ice candidate
    *
    * @private
-   * @param {RTCIceCandidateInit} payload
-   * @memberof Transport
+   * @param {IMessageStructure} msg
+   * @returns {Promise<void>}
+   * @memberof TransportWebrtc
    */
-  private async webrtc_ice_candidate(msg: IMessageStructure) {
+  private async webrtc_ice_candidate(msg: IMessageStructure): Promise<void> {
     // check connected
     if (this.connected) {
       return;
@@ -139,8 +153,8 @@ export class TransportWebrtc extends EventEmitter {
    * Answer webrtc answer
    *
    * @private
-   * @param {RTCSessionDescriptionInit} payload
-   * @returns {Promise< void >}
+   * @param {IMessageStructure} msg
+   * @returns {Promise<void>}
    * @memberof Transport
    */
   private async webrtc_answer(msg: IMessageStructure): Promise<void> {
@@ -162,8 +176,8 @@ export class TransportWebrtc extends EventEmitter {
    * Answer webrtc offer
    *
    * @private
-   * @param {RTCSessionDescriptionInit} payload
-   * @returns {Promise< void >}
+   * @param {IMessageStructure} msg
+   * @returns {Promise<void>}
    * @memberof Transport
    */
   private async webrtc_offer(msg: IMessageStructure): Promise<void> {
@@ -205,7 +219,7 @@ export class TransportWebrtc extends EventEmitter {
    * @param {RTCPeerConnectionIceEvent} event
    * @memberof Transport
    */
-  private handle_ice_candidate(event: RTCPeerConnectionIceEvent) {
+  private handle_ice_candidate(event: RTCPeerConnectionIceEvent): void {
     // Skip when event or event candidate is invalid
     if (!event || !event.candidate || this.connected) {
       return;
@@ -253,7 +267,7 @@ export class TransportWebrtc extends EventEmitter {
    * @param {RTCDataChannelEvent} event
    * @memberof Transport
    */
-  private handle_datachannel(event: RTCDataChannelEvent) {
+  private handle_datachannel(event: RTCDataChannelEvent): void {
     // get data channel
     const dataChannel: RTCDataChannel = event.channel;
 

@@ -31,6 +31,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Split up transport into classes for webrtc and websocket
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [ ] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
+  - [ ] Test heartbeat with disconnect on timeout
   - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe ( timeout interval )
 - [ ] Add verbose output activated, when setting specific environment variable
 - [ ] Change data transfer for websockets and rtc to binary

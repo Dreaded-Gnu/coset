@@ -2,14 +2,40 @@
   "lintOptions": {
     "typeCheck": true
   },
-  "extends": "./node_modules/tslint/lib/configs/recommended",
+  "extends": "./node_modules/tslint/lib/configs/all",
   "rulesDirectory": [
-    "tslint-plugin-prettier"
+    "tslint-plugin-prettier",
+    "tslint-consistent-codestyle"
   ],
   "rules": {
     "indent": [ true, "spaces", 2 ],
-    "only-arrow-functions": false,
+    "no-unsafe-any": false,
     "completed-docs": true,
-    "prettier": true
+    "prettier": true,
+    "naming-convention": [
+      true,
+      // forbid leading and trailing underscores and enforce camelCase on EVERY name. will be overridden by subtypes if needed
+      {"type": "default", "format": "camelCase", "leadingUnderscore": "forbid", "trailingUnderscore": "forbid"},
+      // enforce PascalCase for classes, interfaces, enums, etc. Remember, there are still no underscores allowed.
+      {"type": "type", "format": "PascalCase"},
+      // abstract classes must have the prefix "Abstract". The following part of the name must be valid PascalCase
+      {"type": "class", "modifiers": "abstract", "prefix": "Abstract"},
+      // interface names must start with "I". The following part of the name must be valid PascalCase
+      {"type": "interface", "prefix": "I"},
+      // require exported constant variables that are initialized with functions to be camelCase
+      {"type": "functionVariable", "modifiers": ["export", "const"], "format": "PascalCase"},
+      // exclicitly disable the format check only for method toJSON
+      {"type": "method", "filter": "^toJSON$", "format": null},
+      // Apply pascal case for properties with get modifier
+      {"type": "property", "modifiers": ["public", "get"], "format": "PascalCase"},
+      // generic type parameters must start with "T"
+      // most of the time it will only be T, which is totally valid, because an empty string conforms to the PascalCase check
+      // By convention T, U and V are used for generics. You could enforce that with "regex": "^[TUV]$" and if you are care that much for performance, you could disable every other check by setting a falsy value
+      {"type": "genericTypeParameter", "prefix": "T"},
+      // enum members must be in PascalCase. Without this config, enumMember would inherit UPPER_CASE from public static const property
+      {"type": "enumMember", "format": "PascalCase"},
+      // enforce PascalCase for methods
+      {"type": "method", "format": "PascalCase"}
+    ]
   }
 }

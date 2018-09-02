@@ -4,22 +4,20 @@ import { Server } from "https";
  * Server config
  *
  * @export
- * @interface IServerConfig
  */
 export interface IServerConfig {
   /**
-   * HTTPS server instance
-   *
-   * @type {Server}
-   * @memberof IServerConfig
+   * Ping interval
    */
-  server?: Server;
+  pingInterval?: number;
 
   /**
    * Ping timeout (default: 10000ms -> 10s)
-   *
-   * @type {number}
-   * @memberof IServerConfig
    */
   pingTimeout?: number;
+
+  /**
+   * HTTPS server instance
+   */
+  server?: Server;
 }

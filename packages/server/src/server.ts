@@ -4,7 +4,7 @@ import { IncomingMessage as HttpIncomingMessage } from "http";
 import { Server as HttpsServer } from "https";
 
 // Additional package dependencies
-import * as NodeUuid from "uuid/v4";
+import * as NodeUuid from "uuid";
 import * as WebSocket from "ws";
 
 // Local dependencies
@@ -15,102 +15,85 @@ import { Transport } from "./transport";
  * Server class
  *
  * @export
- * @class Server
  * @extends {EventEmitter}
  */
 export class Server extends EventEmitter {
   /**
-   * Websocket server
-   *
-   * @private
-   * @type {WebSocket.Server}
-   * @memberof Server
+   * Server config options
    */
-  private socketServer: WebSocket.Server;
+  private readonly option: IServerConfig;
 
   /**
    * Transport map
-   *
-   * @private
-   * @type {Map<string, Transport>}
-   * @memberof Server
    */
-  private socketMap: Map<string, Transport>;
+  private readonly socketMap: Map<string, Transport>;
 
   /**
-   * Server config options
-   *
-   * @private
-   * @type {IServerConfig}
-   * @memberof Server
+   * Websocket server
    */
-  private option: IServerConfig;
+  private readonly socketServer: WebSocket.Server;
 
   /**
    * Creates an instance of Server.
    *
-   * @param {HttpsServer} server
-   * @param {IServerConfig} option
-   * @memberof Server
+   * @param [server] server to use
+   * @param [option] more options to be set
    */
   public constructor(server?: HttpsServer | null, option?: IServerConfig) {
-    // call parent constructor
+    // Call parent constructor
     super();
 
-    // build server config
+    // Build server config
     let serverOption: IServerConfig = {
+      pingInterval: 3000,
       pingTimeout: 10000,
       server,
     };
 
     // Merge options
-    if (option) {
+    if (typeof option !== "undefined") {
       serverOption = { ...serverOption, ...option };
     }
 
-    // set server
-    if (!serverOption.server) {
+    // Set server
+    if (typeof serverOption.server === "undefined") {
       throw new Error("No server passed existing!");
     }
 
-    // create socket server
+    // Create socket server
     this.socketServer = new WebSocket.Server(serverOption);
 
-    // setup server
+    // Setup server
     this.socketServer
-      .on("connection", this.handle_connection.bind(this))
-      .on("error", this.handle_error.bind(this))
-      .on("listening", this.handle_listen.bind(this));
+      .on("connection", this.HandleConnection.bind(this))
+      .on("error", this.HandleError.bind(this))
+      .on("listening", this.HandleListen.bind(this));
 
-    // initialize socket map
+    // Initialize socket map
     this.socketMap = new Map();
     this.option = serverOption;
   }
 
   /**
    * Close server
-   *
-   * @returns {Promise< void >}
-   * @memberof Server
    */
-  public close(): void {
+  public Close(): void {
     this.socketServer.close();
   }
 
   /**
    * Handle incoming connection
    *
-   * @private
-   * @param {WebSocket} socket
-   * @memberof Server
+   * @param webSocket incoming websocket connection object
+   * @param request incoming http request message
    */
-  private handle_connection(
+  private HandleConnection(
     webSocket: WebSocket,
     request: HttpIncomingMessage,
   ): void {
     let socketId: string;
     do {
-      socketId = NodeUuid();
+      socketId = NodeUuid.v4();
     } while (this.socketMap.has(socketId));
 
     // Create socket instance
@@ -119,39 +102,32 @@ export class Server extends EventEmitter {
     // Add to map
     this.socketMap.set(socketId, socket);
 
-    // bind connection handler for passing socket out
-    socket.on("connection", this.handle_socket_connected.bind(this));
-  }
-
-  /**
-   * Wrapper for socket connection to pass socket class out
-   *
-   * @private
-   * @param {Socket} socket
-   * @memberof Server
-   */
-  private handle_socket_connected(socket: Transport): void {
-    this.emit("connection", Transport);
+    // Bind connection handler for passing socket out
+    socket.on("connection", this.HandleSocketConnected.bind(this));
   }
 
   /**
    * Error handler passes error out
    *
-   * @private
-   * @param {Error} error
-   * @memberof Server
+   * @param error Error to be bubbled up
    */
-  private handle_error(error: Error): void {
+  private HandleError(error: Error): void {
     this.emit("error", Error);
   }
 
   /**
    * Listen handler simply passes out event
-   *
-   * @private
-   * @memberof Server
    */
-  private handle_listen(): void {
+  private HandleListen(): void {
     this.emit("listening");
+  }
+
+  /**
+   * Wrapper for socket connection to pass socket class out
+   *
+   * @param socket transport to be bubbled up
+   */
+  private HandleSocketConnected(socket: Transport): void {
+    this.emit("connection", Transport);
   }
 }

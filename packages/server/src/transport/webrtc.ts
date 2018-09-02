@@ -1,116 +1,102 @@
-// Node dependencies
-import { EventEmitter } from "events";
-
 // Additional package dependencies
-import "webrtc-adapter";
+import * as EventEmitter from "eventemitter3";
 import * as wrtc from "wrtc";
 
 // Import local dependencies
 import { IMessageStructure } from "./../message/istructure";
-import MessageType from "./../message/itype";
+import { messageType } from "./../message/itype";
 import { IServerConfig } from "./../server/iconfig";
-import { TransportSocket } from "./socket";
+
+/**
+ * Used sizes for transform package into array buffer
+ */
+enum Size {
+  Integer = 4,
+}
+
+/**
+ * WebRTC built in message types
+ */
+enum WebrtcMessageType {
+  Ping = 0,
+}
 
 /**
  * WebRTC DataChannel transport wrapper
  *
  * @export
- * @class TransportWebrtc
- * @extends {EventEmitter}
  */
-export class TransportWebrtc extends EventEmitter {
-  /**
-   * RTC peer connection
-   *
-   * @private
-   * @type {RTCPeerConnection}
-   * @memberof Transport
-   */
-  private peerConnection: wrtc.RTCPeerConnection;
-
-  /**
-   * RTC data channel
-   *
-   * @private
-   * @type {RTCDataChannel}
-   * @memberof Transport
-   */
-  private dataChannel: wrtc.RTCDataChannel;
-
+export class TransportWebrtc {
   /**
    * Connected flag
-   *
-   * @private
-   * @type {boolean}
-   * @memberof TransportWebrtc
    */
   private connected: boolean;
 
   /**
-   * Socket transport used for connection establish
-   *
-   * @private
-   * @type {TransportSocket}
-   * @memberof TransportWebrtc
+   * RTC data channel
    */
-  private socket: TransportSocket;
+  private dataChannel: wrtc.RTCDataChannel;
+
+  /**
+   * Passed in event bus
+   */
+  private readonly eventBus: EventEmitter;
 
   /**
    * Server config
-   *
-   * @private
-   * @type {IServerConfig}
-   * @memberof TransportWebrtc
    */
-  private option: IServerConfig;
+  private readonly option: IServerConfig;
+
+  /**
+   * RTC peer connection
+   */
+  private peerConnection: wrtc.RTCPeerConnection;
+
+  /**
+   * Ping timeout
+   */
+  private pingTimeout: number;
 
   /**
    * Creates an instance of TransportWebrtc.
    *
-   * @param {TransportSocket} socket
-   * @param {IServerConfig} option
-   * @memberof TransportWebrtc
+   * @param option server config
+   * @param eventBus communication event bus
    */
-  constructor(socket: TransportSocket, option: IServerConfig) {
-    // parent constructor
-    super();
-
-    // save socket transport
-    this.socket = socket;
-    // cache option
+  public constructor(option: IServerConfig, eventBus: EventEmitter) {
+    // Save parameters
     this.option = option;
+    this.eventBus = eventBus;
 
-    // bind necessary socket handlers
-    this.socket
-      .on("close", this.socket_close.bind(this))
-      .on(MessageType.webrtc.answer, this.webrtc_answer.bind(this))
-      .on(MessageType.webrtc.offer, this.webrtc_offer.bind(this))
-      .on(MessageType.webrtc.candidate, this.webrtc_ice_candidate.bind(this));
+    this.eventBus
+      .on("signal::close", this.SocketClose.bind(this))
+      .on(`signal::${messageType.webrtc.answer}`, this.WebrtcAnswer.bind(this))
+      .on(`signal::${messageType.webrtc.offer}`, this.WebrtcOffer.bind(this))
+      .on(
+        `signal::${messageType.webrtc.candidate}`,
+        this.WebrtcIceCandidate.bind(this),
+      )
+      .on("socket::send", this.Send.bind(this));
 
-    // initialize peer
+    // Initialize peer
     try {
-      const rtcPeer: typeof RTCPeerConnection =
-        wrtc.RTCPeerConnection ||
-        (window as any).RTCPeerConnection ||
-        RTCPeerConnection;
-
-      // create peer connection and data channel
-      this.peerConnection = new rtcPeer();
+      // Create peer connection and data channel
+      this.peerConnection = new wrtc.RTCPeerConnection();
       this.dataChannel = this.peerConnection.createDataChannel("data", {
         maxRetransmits: 0,
         ordered: false,
       });
 
-      // bind on data event listener
+      // Bind on data event listener
       this.peerConnection.addEventListener(
         "datachannel",
-        this.handle_datachannel.bind(this),
+        this.DatachannelAdded.bind(this),
       );
 
-      // bind ice candidate listener
+      // Bind ice candidate listener
       this.peerConnection.addEventListener(
         "icecandidate",
-        this.handle_ice_candidate.bind(this),
+        this.IceCandidate.bind(this),
       );
     } catch (e) {
       throw new Error("WebRTC DataChannel are not supported!");
@@ -118,235 +104,283 @@ export class TransportWebrtc extends EventEmitter {
   }
 
   /**
-   * Answer webrtc ice candidate
+   * Handle datachannel listener
    *
-   * @private
-   * @param {IMessageStructure} msg
-   * @returns {Promise<void>}
-   * @memberof TransportWebrtc
+   * @param event event data
    */
-  private async webrtc_ice_candidate(msg: IMessageStructure): Promise<void> {
-    // check connected
-    if (this.connected) {
+  private DatachannelAdded(event: wrtc.RTCDataChannelEvent): void {
+    // Get data channel
+    const dataChannel: wrtc.RTCDataChannel = event.channel;
+
+    // Set array buffer binary type
+    dataChannel.binaryType = "arraybuffer";
+
+    // Add event handler
+    dataChannel.addEventListener(
+      "close",
+      this.HandleClose.bind(this, dataChannel),
+    );
+    dataChannel.addEventListener("open", this.HandleOpen.bind(this));
+    dataChannel.addEventListener("message", this.HandleMessage.bind(this));
+    dataChannel.addEventListener("error", this.HandleError.bind(this));
+  }
+
+  /**
+   * Execute ping
+   */
+  private DoPing(): void {
+    // Send ping
+    this.eventBus.emit("socket::send", WebrtcMessageType.Ping);
+
+    // Set timeout
+    this.pingTimeout = setTimeout(
+      this.HandleTimeout.bind(this),
+      this.option.pingTimeout,
+    );
+  }
+
+  /**
+   * Datachannel close event
+   *
+   * @param event event data
+   */
+  private HandleClose(channel: wrtc.RTCDataChannel, event: Event): void {
+    // Reset handler
+    channel.removeEventListener("close", this.HandleClose.bind(this));
+    channel.removeEventListener("open", this.HandleOpen.bind(this));
+    channel.removeEventListener("message", this.HandleMessage.bind(this));
+    channel.removeEventListener("error", this.HandleError.bind(this));
+
+    // Close channel
+    channel.close();
+  }
+
+  /**
+   * Handle datachannel error
+   *
+   * @todo add error handling
+   *
+   * @param event error event
+   */
+  private HandleError(event: Event): void {
+    this.eventBus.emit("socket::error", event);
+  }
+
+  /**
+   * Handle data channel message
+   *
+   * @todo add message parsing
+   * @todo add error handling
+   *
+   * @param event message event
+   */
+  private HandleMessage(event: MessageEvent): void {
+    this.eventBus.emit("socket::message", event.data);
+  }
+
+  /**
+   * Handle datachannel open
+   *
+   * @param event event data
+   */
+  private HandleOpen(event: MessageEvent): void {
+    // Set connection flag
+    this.connected = true;
+
+    // Start heartbeat
+    this.Hearbeat();
+
+    // Emit connection success
+    this.eventBus.emit("socket::connection", this);
+  }
+
+  /**
+   * Handle timeout
+   *
+   * @todo add timeout handling
+   */
+  private HandleTimeout(): void {
+    // Reset connected flag
+    this.connected = false;
+    throw new Error("Timeout handling to be added!");
+  }
+
+  /**
+   * Ping message handling
+   */
+  private Hearbeat(): void {
+    // Skip if not connected
+    if (!this.connected) {
       return;
     }
 
-    // get payload
-    const payload: RTCIceCandidateInit = msg.payload;
+    // Clear timeout
+    clearTimeout(this.pingTimeout);
 
-    // create rtc ice candidate
-    const candidate: RTCIceCandidate = new wrtc.RTCIceCandidate(payload);
+    // Send ping with delay
+    setTimeout(this.DoPing.bind(this), this.option.pingInterval);
+  }
 
-    // wait for add of ice candidate
-    await this.peerConnection.addIceCandidate(candidate);
+  /**
+   * Handle ice candidate and send to remote
+   *
+   * @param event event data containing candidae
+   */
+  private IceCandidate(event: wrtc.RTCPeerConnectionIceEvent): void {
+    // Skip when event or event candidate is invalid
+    if (
+      this.connected ||
+      typeof event === "undefined" ||
+      event === null ||
+      typeof event.candidate === "undefined" ||
+      event.candidate === null
+    ) {
+      return;
+    }
 
-    // return candidate
-    this.socket.send(
+    // Send candidate back
+    this.eventBus.emit(
+      "signal::send",
       JSON.stringify({
-        payload: candidate,
-        type: MessageType.webrtc.candidate,
+        payload: event.candidate,
+        type: messageType.webrtc.candidate,
       }),
     );
   }
 
   /**
+   * Send message callback
+   *
+   * @todo use registered structure for transfer to array buffer
+   * @todo Calculate correct size of array buffer
+   *
+   * @param type message type to send necessary for binary transfer
+   * @param data data to send with registered structure
+   */
+  private Send(type: number, data: object): void {
+    // Do nothing on connection
+    if (!this.connected) {
+      return;
+    }
+
+    // Allocate buffer
+    const buffer: ArrayBuffer = new ArrayBuffer(Size.Integer);
+
+    // TODO: transform data to buffer
+
+    // Send data
+    this.dataChannel.send(buffer);
+  }
+
+  /**
+   * Handler for socket close to kickstart datachannel close
+   */
+  private SocketClose(): void {
+    // Close rtc peer connection if existing
+    if (typeof this.peerConnection === "undefined") {
+      return;
+    }
+
+    // Remove channel callback
+    this.peerConnection.removeEventListener(
+      "datachannel",
+      this.DatachannelAdded.bind(this),
+    );
+
+    // Close connection
+    this.peerConnection.close();
+
+    // Unset peer connection and connection flag
+    this.peerConnection = undefined;
+    this.dataChannel = undefined;
+    this.connected = false;
+  }
+
+  /**
    * Answer webrtc answer
    *
-   * @private
-   * @param {IMessageStructure} msg
-   * @returns {Promise<void>}
-   * @memberof Transport
+   * @param msg message received from socket transport
    */
-  private async webrtc_answer(msg: IMessageStructure): Promise<void> {
-    // check connected
+  private async WebrtcAnswer(msg: IMessageStructure): Promise<void> {
+    // Check connected
     if (this.connected) {
       return;
     }
 
-    // extract payload
-    const payload: RTCSessionDescriptionInit = msg.payload;
+    // Extract payload
+    const payload: wrtc.RTCSessionDescriptionInit = msg.payload as wrtc.RTCSessionDescriptionInit;
 
-    // set remote description
+    // Set remote description
     await this.peerConnection.setRemoteDescription(
-      new RTCSessionDescription(payload),
+      new wrtc.RTCSessionDescription(payload),
+    );
+  }
+
+  /**
+   * Answer webrtc ice candidate
+   *
+   * @param msg message received from socket transport
+   */
+  private async WebrtcIceCandidate(msg: IMessageStructure): Promise<void> {
+    // Check connected
+    if (this.connected) {
+      return;
+    }
+
+    // Get payload
+    const payload: wrtc.RTCIceCandidateInit = msg.payload as wrtc.RTCIceCandidate;
+
+    // Create rtc ice candidate
+    const candidate: wrtc.RTCIceCandidate = new wrtc.RTCIceCandidate(payload);
+
+    // Wait for add of ice candidate
+    await this.peerConnection.addIceCandidate(candidate);
+
+    // Return candidate
+    this.eventBus.emit(
+      "signal::send",
+      JSON.stringify({
+        payload: candidate,
+        type: messageType.webrtc.candidate,
+      }),
     );
   }
 
   /**
    * Answer webrtc offer
    *
-   * @private
-   * @param {IMessageStructure} msg
-   * @returns {Promise<void>}
-   * @memberof Transport
+   * @param msg message received from socket transport
    */
-  private async webrtc_offer(msg: IMessageStructure): Promise<void> {
-    // check connected
+  private async WebrtcOffer(msg: IMessageStructure): Promise<void> {
+    // Check connected
     if (this.connected) {
       return;
     }
 
-    // extract payload
-    const payload: RTCSessionDescriptionInit = msg.payload;
+    // Extract payload
+    const payload: wrtc.RTCSessionDescriptionInit = msg.payload as wrtc.RTCSessionDescriptionInit;
 
-    // set remote description
+    // Set remote description
     await this.peerConnection.setRemoteDescription(payload);
 
-    // create answer
-    const answer: RTCSessionDescriptionInit = await this.peerConnection.createAnswer(
+    // Create answer
+    const answer: wrtc.RTCSessionDescriptionInit = await this.peerConnection.createAnswer(
       {
         offerToReceiveAudio: false,
         offerToReceiveVideo: false,
       },
     );
 
-    // add answer as local description
+    // Add answer as local description
     await this.peerConnection.setLocalDescription(answer);
 
-    // send answer back
-    this.socket.send(
+    // Send answer back
+    this.eventBus.emit(
+      "signal::send",
       JSON.stringify({
         payload: answer,
-        type: MessageType.webrtc.answer,
+        type: messageType.webrtc.answer,
       }),
     );
-  }
-
-  /**
-   * Handle ice candidate
-   *
-   * @private
-   * @param {RTCPeerConnectionIceEvent} event
-   * @memberof Transport
-   */
-  private handle_ice_candidate(event: RTCPeerConnectionIceEvent): void {
-    // Skip when event or event candidate is invalid
-    if (!event || !event.candidate || this.connected) {
-      return;
-    }
-
-    // send candidate back
-    this.socket.send(
-      JSON.stringify({
-        payload: event.candidate,
-        type: MessageType.webrtc.candidate,
-      }),
-    );
-  }
-
-  /**
-   * Handler for socket close to kickstart datachannel close
-   *
-   * @private
-   * @memberof TransportWebrtc
-   */
-  private socket_close(): void {
-    // close rtc peer connection if existing
-    if (!this.peerConnection) {
-      return;
-    }
-
-    // remove channel callback
-    this.peerConnection.removeEventListener(
-      "datachannel",
-      this.handle_datachannel.bind(this),
-    );
-
-    // close connection
-    this.peerConnection.close();
-
-    // unset peer connection
-    this.peerConnection = null;
-    this.dataChannel = null;
-  }
-
-  /**
-   * Handle datachannel listener
-   *
-   * @private
-   * @param {RTCDataChannelEvent} event
-   * @memberof Transport
-   */
-  private handle_datachannel(event: RTCDataChannelEvent): void {
-    // get data channel
-    const dataChannel: RTCDataChannel = event.channel;
-
-    // set array buffer binary type
-    dataChannel.binaryType = "arraybuffer";
-
-    // add event handler
-    dataChannel.addEventListener(
-      "close",
-      this.handle_close.bind(this, dataChannel),
-    );
-    dataChannel.addEventListener("open", this.handle_open.bind(this));
-    dataChannel.addEventListener("message", this.handle_message.bind(this));
-    dataChannel.addEventListener("error", this.handle_error.bind(this));
-  }
-
-  /**
-   * Handle datachannel open
-   *
-   * @private
-   * @param {MessageEvent} event
-   * @memberof Transport
-   */
-  private handle_open(event: MessageEvent): void {
-    this.connected = true;
-    this.emit("connection", this);
-  }
-
-  /**
-   * Datachannel close event
-   *
-   * @private
-   * @param {Event} event
-   * @memberof Transport
-   */
-  private handle_close(channel: RTCDataChannel, event: Event): void {
-    // reset handler
-    channel.removeEventListener("close", this.handle_close.bind(this));
-    channel.removeEventListener("open", this.handle_open.bind(this));
-    channel.removeEventListener("message", this.handle_message.bind(this));
-    channel.removeEventListener("error", this.handle_error.bind(this));
-
-    // close channel
-    channel.close();
-  }
-
-  /**
-   * Handle data channel message
-   *
-   * @private
-   * @param {MessageEvent} event
-   * @memberof Transport
-   */
-  private handle_message(event: MessageEvent): void {
-    /*// emit events
-    try {
-      // pre message handling
-      this.emit("message:pre", msg);
-
-      // message handling
-      this.emit("message", msg);
-
-      // post message handling
-      this.emit("message:post", msg);
-    } catch (e) {
-      // TODO: Add error handling
-      return;
-    }*/
-    // TODO: parse message
-  }
-
-  /**
-   * Handle datachannel error
-   *
-   * @private
-   * @param {Event} event
-   * @memberof Transport
-   */
-  private handle_error(event: Event): void {
-    // TODO: Add error handling
   }
 }

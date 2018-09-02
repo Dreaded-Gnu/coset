@@ -29,10 +29,14 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Extend server config by ping timeout attribute as number with default of 10 seconds
   - [x] Remove not yet used config options from server config interface
   - [x] Split up transport into classes for webrtc and websocket
+  - [x] Use event bus for connecting websocket and webrtc transport layer instead of passing them around
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [ ] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
+  - [ ] Add disconnect of both transports when one or both disconnected or emitted an error
+  - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe.
   - [ ] Test heartbeat with disconnect on timeout
-  - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe ( timeout interval )
+  - [ ] Add disconnect of both connections on error
+  - [ ] Find better place for SocketClose callback within webrtc
 - [ ] Add verbose output activated, when setting specific environment variable
 - [ ] Change data transfer for websockets and rtc to binary
   - [ ] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive

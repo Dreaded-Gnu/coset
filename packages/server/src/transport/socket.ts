@@ -1,209 +1,174 @@
 // Node dependencies
 import { notStrictEqual } from "assert";
-import { EventEmitter } from "events";
 
 // Additional package dependencies
+import * as EventEmitter from "eventemitter3";
 import { default as WebSocket } from "ws";
 
-// server configs
+// Server configs
+import { IMessageStructure } from "./../message/istructure";
 import { IServerConfig } from "./../server/iconfig";
 
 /**
  * Socket transport wrapper
  *
  * @export
- * @class TransportSocket
- * @extends {EventEmitter}
  */
-export class TransportSocket extends EventEmitter {
-  /**
-   * Websocket instance
-   *
-   * @private
-   * @type {WebSocket}
-   * @memberof TransportSocket
-   */
-  private socket: WebSocket;
-
-  /**
-   * Ping timeout
-   *
-   * @private
-   * @type {number}
-   * @memberof TransportSocket
-   */
-  private pingTimeout: number;
-
+export class TransportSocket {
   /**
    * Connection flag
-   *
-   * @private
-   * @type {boolean}
-   * @memberof TransportSocket
    */
   private connected: boolean;
 
   /**
+   * Passed in event bus
+   */
+  private readonly eventBus: EventEmitter;
+
+  /**
    * Server configs
    *
-   * @private
-   * @type {IServerConfig}
-   * @memberof TransportSocket
    */
-  private option: IServerConfig;
+  private readonly option: IServerConfig;
+
+  /**
+   * Ping timeout
+   */
+  private pingTimeout: number;
+
+  /**
+   * Websocket instance
+   */
+  private readonly socket: WebSocket;
 
   /**
    * Creates an instance of TransportSocket.
    *
-   * @param {WebSocket} socket
-   * @param {IServerConfig} option
-   * @memberof TransportSocket
+   * @param socket Incoming websocket connection
+   * @param option Server configs
+   * @param eventBus Communication event bus
    */
-  constructor(socket: WebSocket, option: IServerConfig) {
-    // parent constructor
-    super();
-
-    // save socket
+  public constructor(
+    socket: WebSocket,
+    option: IServerConfig,
+    eventBus: EventEmitter,
+  ) {
+    // Save parameters
     this.socket = socket;
+    this.option = option;
+    this.eventBus = eventBus;
 
-    // bind handler
+    // Bind handler
     this.socket
-      .on("message", this.handle_message.bind(this))
-      .on("close", this.handle_close.bind(this))
-      .on("error", this.handle_error.bind(this))
-      .on("unexpected-response", this.handle_unexpected.bind(this))
-      .on("pong", this.hearbeat.bind(this));
+      .on("message", this.HandleMessage.bind(this))
+      .on("close", this.HandleClose.bind(this))
+      .on("error", this.HandleError.bind(this))
+      .on("pong", this.Hearbeat.bind(this));
 
-    // set connected flag
+    // Bind send handler
+    this.eventBus.on("signal::send", this.Send.bind(this));
+
+    // Set connected flag
     this.connected = true;
 
-    // cache option
-    this.option = option;
-
-    // start heartbeat
-    this.hearbeat();
-  }
-
-  /**
-   * Encapsulated send message
-   *
-   * @param {string} msg
-   * @memberof TransportSocket
-   */
-  public send(msg: string): void {
-    this.socket.send(msg);
+    // Start heartbeat
+    this.Hearbeat();
   }
 
   /**
    * Close socket
-   *
-   * @memberof TransportSocket
    */
-  public close(): void {
+  public Close(): void {
     this.socket.close();
   }
 
   /**
-   * Ping message handling
-   *
-   * @private
-   * @memberof TransportSocket
-   */
-  private hearbeat(): void {
-    // skip if not connected
-    if (!this.connected) {
-      return;
-    }
-
-    // clear timeout
-    clearTimeout(this.pingTimeout);
-
-    // send ping with delay
-    setTimeout(this.do_ping.bind(this), 10000);
-  }
-
-  /**
    * Execute ping
-   *
-   * @private
-   * @memberof TransportSocket
    */
-  private do_ping(): void {
-    // send ping
-    this.socket.ping("ping");
+  private DoPing(): void {
+    // Send ping
+    this.socket.ping();
 
-    // set timeout
+    // Set timeout
     this.pingTimeout = setTimeout(
-      this.handle_timeout.bind(this),
+      this.HandleTimeout.bind(this),
       this.option.pingTimeout,
     );
   }
 
   /**
-   * Handle timeout
+   * Close handling
    *
-   * @private
-   * @memberof TransportSocket
+   * @param code close code
+   * @param reason close reason
    */
-  private handle_timeout(): void {
-    // reset connected flag
-    this.connected = false;
+  private HandleClose(code: number, reason: string): void {
+    this.eventBus.emit("signal::close", code, reason);
+  }
 
-    // close socket
-    this.close();
+  /**
+   * Error handling
+   *
+   * @param err error event data
+   */
+  private HandleError(err: Error): void {
+    this.eventBus.emit("signal::error", err);
   }
 
   /**
    * Message handling
    *
-   * @private
-   * @param {string} [msg]
-   * @returns {void}
-   * @memberof Transport
+   * @param msg incoming message string
    */
-  private async handle_message(data: string): Promise<void> {
-    // try to decode message
+  private async HandleMessage(data: WebSocket.Data): Promise<void> {
+    // Try to decode message
     try {
-      // parse message
-      const msg = JSON.parse(data);
+      // Parse message
+      const msg: IMessageStructure = JSON.parse(data.toString());
 
-      // check for not equal
+      // Check for not equal
       notStrictEqual(msg.type, undefined);
 
-      // emit message
-      this.emit(msg.type, msg);
+      // Emit message
+      this.eventBus.emit(`signal::${msg.type}`, msg);
     } catch (e) {
       throw Error("Invalid message request");
     }
   }
 
   /**
-   * Close handling
-   *
-   * @private
-   * @memberof Transport
+   * Handle timeout
    */
-  private handle_close(): void {
-    this.emit("close");
+  private HandleTimeout(): void {
+    // Reset connected flag
+    this.connected = false;
+
+    // Close socket
+    this.Close();
   }
 
   /**
-   * Error handling
-   *
-   * @private
-   * @memberof Transport
+   * Ping message handling
    */
-  private handle_error(): void {
-    // TODO: Add error handling
+  private Hearbeat(): void {
+    // Skip if not connected
+    if (!this.connected) {
+      return;
+    }
+
+    // Clear timeout
+    clearTimeout(this.pingTimeout);
+
+    // Send ping with delay
+    setTimeout(this.DoPing.bind(this), this.option.pingInterval);
   }
 
   /**
-   * Unexpected handling
+   * Encapsulated send message
    *
-   * @private
-   * @memberof Transport
+   * @param msg message to send via socket
    */
-  private handle_unexpected(): void {
-    // TODO: Add unexpected handling
+  private Send(msg: string): void {
+    this.socket.send(msg);
   }
 }

@@ -1,23 +1,18 @@
+import * as wrtc from "wrtc";
+
 /**
  * Message structure
  *
  * @export
- * @interface IMessageStructure
  */
 export interface IMessageStructure {
   /**
-   * Message type
-   *
-   * @type {string}
-   * @memberof IMessageStructure
+   * Message payload
    */
-  type?: string;
+  payload?: wrtc.RTCSessionDescriptionInit | wrtc.RTCIceCandidate;
 
   /**
-   * Message payload
-   *
-   * @type {*}
-   * @memberof IMessageStructure
+   * Message type
    */
-  payload: any;
+  type?: string;
 }

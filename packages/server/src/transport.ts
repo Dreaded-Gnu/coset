@@ -1,7 +1,5 @@
-// Node dependencies
-import { EventEmitter } from "events";
-
-// Additional package dependencies
+// Package dependencies
+import * as EventEmitter from "eventemitter3";
 import { default as WebSocket } from "ws";
 
 // Import local dependencies
@@ -13,75 +11,62 @@ import { TransportWebrtc } from "./transport/webrtc";
  * Transport class
  *
  * @export
- * @class Transport
  * @extends {EventEmitter}
  */
 export class Transport extends EventEmitter {
   /**
+   * Communication eventbus between socket and rtc transport
+   */
+  private readonly eventBus: EventEmitter;
+
+  /**
    * Transport id
-   *
-   * @private
-   * @type {string}
-   * @memberof Transport
    */
   private readonly id: string;
 
   /**
    * Websocket transport instance
-   *
-   * @private
-   * @type {TransportSocket}
-   * @memberof Transport
    */
+  // @ts-ignore
   private readonly socket: TransportSocket;
 
   /**
    * Webrtc transport
-   *
-   * @private
-   * @type {TransportWebrtc}
-   * @memberof Transport
    */
+  // @ts-ignore
   private readonly webrtc: TransportWebrtc;
 
   /**
    * Creates an instance of Transport.
    *
-   * @param {string} id
-   * @param {WebSocket} socket
-   * @memberof Transport
+   * @param id Transport id
+   * @param socket incoming websocket connection
    */
-  constructor(id: string, socket: WebSocket, option: IServerConfig) {
+  public constructor(id: string, socket: WebSocket, option: IServerConfig) {
     // Call parent constructor
     super();
 
     // Initialize attributes
     this.id = id;
+    this.eventBus = new EventEmitter<string>();
 
     // Setup transports
-    this.socket = new TransportSocket(socket, option);
-    this.webrtc = new TransportWebrtc(this.socket, option);
+    this.socket = new TransportSocket(socket, option, this.eventBus);
+    this.webrtc = new TransportWebrtc(option, this.eventBus);
 
-    // handle connection and pass instance out
-    this.webrtc.on("connection", this.handle_open.bind(this));
+    // Treat rtc connection as successful establish of connection
+    this.eventBus.on("socket::connection", this.HandleOpen.bind(this));
   }
 
   /**
    * Open handling
-   *
-   * @private
-   * @memberof Transport
    */
-  private handle_open(): void {
+  private HandleOpen(): void {
     this.emit("connection", this);
   }
 
   /**
    * Method to get id
-   *
-   * @readonly
-   * @type {string}
-   * @memberof Transport
    */
   public get Id(): string {
     return this.id;

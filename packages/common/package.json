@@ -33,6 +33,6 @@
     "node": "8.x || 10.x"
   },
   "dependencies": {
-    "@types/node": "10.9.3"
+    "@types/node": "10.9.4"
   }
 }

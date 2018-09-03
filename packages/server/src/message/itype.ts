@@ -23,12 +23,18 @@ interface IWebrtcMessageType {
  */
 interface IMessageType {
   /**
+   * Close message
+   */
+  close: string;
+
+  /**
    * Webrtc message type
    */
   webrtc: IWebrtcMessageType;
 }
 
 export const messageType: IMessageType = {
+  close: "close",
   webrtc: {
     answer: "webrtc-answer",
     candidate: "webrtc-candidate",

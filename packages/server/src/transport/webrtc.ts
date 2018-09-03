@@ -11,6 +11,7 @@ import { IServerConfig } from "./../server/iconfig";
  * Used sizes for transform package into array buffer
  */
 enum Size {
+  Empty = 0,
   Integer = 4,
 }
 
@@ -22,11 +23,72 @@ enum WebrtcMessageType {
 }
 
 /**
+ * Callback map function type
+ */
+type CallbackMapFunction = (data?: object) => void;
+
+/**
+ * Internal count helper
+ *
+ * @param obj serialize object to count bytes of
+ * @return amount of bytes for array buffer
+ */
+const countObjectLength: (obj: object) => number = (obj: object): number => {
+  // Initialize initial length with empty
+  let byteLength: number = Size.Empty;
+
+  // Loop recursively through object
+  for (const key in obj) {
+    // Skip invalid
+    if (!obj.hasOwnProperty(key)) {
+      continue;
+    }
+
+    // Handle object in object
+    if (typeof obj[key] !== "number") {
+      byteLength += countObjectLength(obj[key]);
+      continue;
+    }
+
+    // Normal byte amount
+    byteLength += parseInt(obj[key], 10);
+  }
+
+  return byteLength;
+};
+
+/**
+ * Object to array buffer converter
+ *
+ * @todo Throw error when object doesn't match structure
+ *
+ * @param serialize serialize object
+ * @param data data object
+ * @param byteLength byte length for array buffer
+ */
+const objectToBuffer: (
+  serialize: object,
+  data: object,
+  byteLength: number,
+) => ArrayBuffer = (
+  serialize: object,
+  data: object,
+  byteLength: number,
+): ArrayBuffer => {
+  throw new Error("Object to buffer helper not yet written!");
+};
+
+/**
  * WebRTC DataChannel transport wrapper
  *
  * @export
  */
 export class TransportWebrtc {
+  /**
+   * Callback map
+   */
+  private readonly callbackMap: Map<number, CallbackMapFunction[]>;
+
   /**
    * Connected flag
    */
@@ -58,6 +120,16 @@ export class TransportWebrtc {
   private pingTimeout: number;
 
   /**
+   * Array of reserved message types
+   */
+  private readonly reservedMessageTypes: number[];
+
+  /**
+   * Serialize map
+   */
+  private readonly serializeMap: Map<number, object>;
+
+  /**
    * Creates an instance of TransportWebrtc.
    *
    * @param option server config
@@ -68,15 +140,23 @@ export class TransportWebrtc {
     this.option = option;
     this.eventBus = eventBus;
 
+    // Setup necessary event handler
     this.eventBus
-      .on("signal::close", this.SocketClose.bind(this))
+      .on(`signal::${messageType.close}`, this.SignalClose.bind(this))
       .on(`signal::${messageType.webrtc.answer}`, this.WebrtcAnswer.bind(this))
       .on(`signal::${messageType.webrtc.offer}`, this.WebrtcOffer.bind(this))
       .on(
         `signal::${messageType.webrtc.candidate}`,
         this.WebrtcIceCandidate.bind(this),
       )
-      .on("socket::send", this.Send.bind(this));
+      .on("socket::send", this.Send.bind(this))
+      .on("socket::serialize", this.RegisterSerialize.bind(this))
+      .on("socket::handler", this.RegisterHandler.bind(this));
+
+    // Setup reserved messages and initialize maps
+    this.reservedMessageTypes = [WebrtcMessageType.Ping];
+    this.serializeMap = new Map();
+    this.callbackMap = new Map();
 
     // Initialize peer
     try {
@@ -99,7 +179,7 @@ export class TransportWebrtc {
         this.IceCandidate.bind(this),
       );
     } catch (e) {
-      throw new Error("WebRTC DataChannel are not supported!");
+      throw new Error("WebRTC DataChannel not supported!");
     }
   }
 
@@ -249,33 +329,149 @@ export class TransportWebrtc {
   }
 
   /**
+   * Method to register handler
+   *
+   * @param type message type
+   * @param callback callback to use
+   * @param remove removal flag
+   */
+  private RegisterHandler(
+    type: number,
+    callback: CallbackMapFunction,
+    remove: boolean = false,
+  ): void {
+    // Check for reserve message type
+    if (this.reservedMessageTypes.indexOf(type) !== -1) {
+      throw new Error(`Message type ${type} only for internal usage!`);
+    }
+
+    // Setup callbacks to insert
+    let callbackList: CallbackMapFunction[] = [];
+
+    // Overwrite if existing
+    if (this.callbackMap.has(type)) {
+      callbackList = this.callbackMap.get(type);
+    }
+
+    // Get callback index
+    const currentCallbackIndex: number = callbackList.indexOf(callback);
+
+    // Check for existance before removal
+    if (remove && currentCallbackIndex !== -1) {
+      return;
+    }
+
+    // Handle remove
+    if (remove) {
+      callbackList.splice(currentCallbackIndex, 1);
+
+      return;
+    }
+
+    // Handle already added
+    if (currentCallbackIndex !== -1) {
+      throw new Error(`Callback for message type ${type} already registered!`);
+    }
+
+    // Push callback and overwrite map entry
+    callbackList.push(callback);
+    this.callbackMap.set(type, callbackList);
+  }
+
+  /**
+   * Method to register serialization strategy
+   *
+   * @param type message type
+   * @param structure structure information to cache
+   * @param remove flag set to true for removal
+   */
+  private RegisterSerialize(
+    type: number,
+    structure?: object,
+    remove: boolean = false,
+  ): void {
+    // Check for reserve message type
+    if (this.reservedMessageTypes.indexOf(type) !== -1) {
+      throw new Error(`Message type ${type} only for internal usage!`);
+    }
+
+    // Handle already set serialize
+    if (!remove && this.serializeMap.has(type)) {
+      throw new Error(
+        `Register serialize for type ${type} already registered!`,
+      );
+    }
+
+    // Handle remove
+    if (remove) {
+      this.serializeMap.delete(type);
+
+      return;
+    }
+
+    // Set serialize structure
+    this.serializeMap.set(type, structure);
+  }
+
+  /**
    * Send message callback
    *
    * @todo use registered structure for transfer to array buffer
    * @todo Calculate correct size of array buffer
    *
    * @param type message type to send necessary for binary transfer
-   * @param data data to send with registered structure
+   * @param data optional data to send with registered structure
    */
-  private Send(type: number, data: object): void {
+  private Send(type: number, data?: object): void {
     // Do nothing on connection
     if (!this.connected) {
       return;
     }
 
+    // Initial length is only size for type number
+    let len: number = Size.Integer;
+
+    // Get serialization information
+    const serialize: object = this.serializeMap.get(type);
+
+    // Handle passed data but no serialize object
+    if (typeof serialize === "undefined" && typeof data !== "undefined") {
+      throw new Error(`No serialization for message type ${type} existing`);
+    }
+
+    // Handle data
+    if (typeof data !== "undefined") {
+      // To preven linting errors
+      len += countObjectLength(serialize);
+    }
+
+    // Create typed arrays for later transport
+    const typeBuffer: Uint32Array = new Uint32Array([type]);
+    let objectBuffer: ArrayBuffer;
+
     // Allocate buffer
-    const buffer: ArrayBuffer = new ArrayBuffer(Size.Integer);
+    const buffer: Uint8Array = new Uint8Array(len);
 
-    // TODO: transform data to buffer
+    // Add message type
+    buffer.set(new Uint8Array(typeBuffer.buffer), 0);
 
-    // Send data
+    // Append object buffer data
+    if (typeof data !== "undefined") {
+      // Translate object into array buffer
+      objectBuffer = objectToBuffer(serialize, data, len - Size.Integer);
+
+      // Add data to transfer
+      buffer.set(new Uint8Array(objectBuffer), objectBuffer.byteLength);
+    }
+
+    // Send package
     this.dataChannel.send(buffer);
   }
 
   /**
    * Handler for socket close to kickstart datachannel close
    */
-  private SocketClose(): void {
+  private SignalClose(): void {
     // Close rtc peer connection if existing
     if (typeof this.peerConnection === "undefined") {
       return;

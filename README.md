@@ -39,7 +39,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Find better place for SocketClose callback within webrtc
 - [ ] Add verbose output activated, when setting specific environment variable
 - [ ] Change data transfer for websockets and rtc to binary
-  - [ ] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive
+  - [x] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive
 
     ```js
     /*
@@ -47,7 +47,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
      * before send and decode of data after receive
      * before passing data out
      */
-    client.use(
+    client.Serialize(
       Message.Position, {
         a: Type.Char,
         b: Type.Int,
@@ -60,7 +60,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
     /*
      * handler called after decode has been done
      */
-    client.on(
+    client.Handler(
       Message.Position,
       ( data ) => {
         /* ... do something with data structure ... */
@@ -94,6 +94,6 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Create example projects
 - [ ] Add automatic changelog generation
 - [x] Add code of conduct file
-- [ ] Add content within contributing markdown
-- [ ] Add github issue templates
+- [x] Add content within contributing markdown
+- [x] Add github issue and pull request templates
 - [ ] Publish to npm

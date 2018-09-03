@@ -59,16 +59,45 @@ export class Transport extends EventEmitter {
   }
 
   /**
-   * Open handling
-   */
-  private HandleOpen(): void {
-    this.emit("connection", this);
-  }
-
-  /**
    * Method to get id
    */
   public get Id(): string {
     return this.id;
+  }
+
+  /**
+   * Method to bind handler for specific message type
+   * @param type message type to use
+   * @param callback callback to be executed with parsed data
+   * @param remove set to true for handler removal
+   */
+  public Handler(
+    type: number,
+    callback: (data: object) => void,
+    remove: boolean = false,
+  ): void {
+    this.emit("socket::handler", type, callback, remove);
+  }
+
+  /**
+   * Method to bind data serialize structure
+   *
+   * @param type message type
+   * @param structure message data structure
+   * @param remove set to trye ti renive serialize structure
+   */
+  public Serialize(
+    type: number,
+    structure?: object,
+    remove: boolean = false,
+  ): void {
+    this.emit("socket::serialize", type, structure, remove);
+  }
+
+  /**
+   * Open handling
+   */
+  private HandleOpen(): void {
+    this.emit("connection", this);
   }
 }

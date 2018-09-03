@@ -163,10 +163,11 @@ export class TransportWebrtc {
     this.callbackMap = new Map();
 
     // Setup internal message handlers
-    this.eventBus.emit(
-      "socket::handler",
+    this.RegisterHandler(
       WebrtcMessageType.Pong,
       this.Hearbeat.bind(this),
+      false,
+      true,
     );
 
     // Initialize peer
@@ -221,7 +222,7 @@ export class TransportWebrtc {
    */
   private DoPing(): void {
     // Send ping
-    this.eventBus.emit("socket::send", WebrtcMessageType.Ping);
+    this.Send(WebrtcMessageType.Ping);
 
     // Set timeout
     this.pingTimeout = setTimeout(
@@ -314,8 +315,6 @@ export class TransportWebrtc {
         cb(event.data);
       },
     );
-
-    this.eventBus.emit("socket::message", event.data);
   }
 
   /**
@@ -391,6 +390,8 @@ export class TransportWebrtc {
   /**
    * Method to register handler
    *
+   * @todo check whether handler removal works or not
+   *
    * @param type message type
    * @param callback callback to use
    * @param remove removal flag
@@ -399,6 +400,7 @@ export class TransportWebrtc {
     type: number,
     callback: CallbackMapFunction,
     remove: boolean = false,
+    internal: boolean = false,
   ): void {
     // Handle invalid data
     if (typeof type === "undefined" || typeof callback === "undefined") {
@@ -406,9 +408,9 @@ export class TransportWebrtc {
     }
 
     // Check for reserve message type
-    if (remove && this.reservedMessageTypes.indexOf(type) !== -1) {
+    if (!internal && this.reservedMessageTypes.indexOf(type) !== -1) {
       throw new Error(
-        `Message type ${type} used internally, removal not possible!`,
+        `Message type ${type} used internally, removal or add not possible!`,
       );
     }
 
@@ -482,9 +484,6 @@ export class TransportWebrtc {
 
   /**
    * Send message callback
-   *
-   * @todo use registered structure for transfer to array buffer
-   * @todo Calculate correct size of array buffer
    *
    * @param type message type to send necessary for binary transfer
    * @param data optional data to send with registered structure

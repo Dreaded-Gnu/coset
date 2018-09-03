@@ -31,7 +31,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Split up transport into classes for webrtc and websocket
   - [x] Use event bus for connecting websocket and webrtc transport layer instead of passing them around
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
-  - [ ] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
+  - [x] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
   - [ ] Add disconnect of both transports when one or both disconnected or emitted an error
   - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe.
   - [ ] Test heartbeat with disconnect on timeout
@@ -68,7 +68,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
     );
     ```
 
-  - [ ] Implement encoding of data before send, when listener is set.
+  - [x] Implement encoding of data before send, when listener is set.
   - [ ] Implement decoding of data after receive, when listener is set.
   - [ ] Throw errors, when trying to send/receive a message type without encode/decode handler
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel

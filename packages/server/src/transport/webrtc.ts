@@ -20,6 +20,7 @@ enum Size {
  */
 enum WebrtcMessageType {
   Ping = 0,
+  Pong = 1,
 }
 
 /**
@@ -154,9 +155,19 @@ export class TransportWebrtc {
       .on("socket::handler", this.RegisterHandler.bind(this));
 
     // Setup reserved messages and initialize maps
-    this.reservedMessageTypes = [WebrtcMessageType.Ping];
+    this.reservedMessageTypes = [
+      WebrtcMessageType.Ping,
+      WebrtcMessageType.Pong,
+    ];
     this.serializeMap = new Map();
     this.callbackMap = new Map();
+
+    // Setup internal message handlers
+    this.eventBus.emit(
+      "socket::handler",
+      WebrtcMessageType.Pong,
+      this.Hearbeat.bind(this),
+    );
 
     // Initialize peer
     try {
@@ -255,6 +266,55 @@ export class TransportWebrtc {
    * @param event message event
    */
   private HandleMessage(event: MessageEvent): void {
+    // Extract message type
+    const msgType: number = new Int32Array(
+      event.data.slice(Size.Empty, Size.Integer),
+    )[0];
+
+    // Initial length is only size for type number
+    let checkLength: number = Size.Integer;
+    const messageLength: number = event.data.byteLength;
+
+    // Get serialization information
+    const serialize: object = this.serializeMap.get(msgType);
+
+    // Extend check length by expected message size
+    if (typeof serialize !== "undefined") {
+      checkLength += countObjectLength(serialize);
+    }
+
+    // Check array buffer length
+    if (event.data.byteLength !== checkLength) {
+      throw new Error(
+        `Invalid message size, expected ${checkLength} got ${messageLength}`,
+      );
+    }
+
+    // Handle deserialization
+    if (typeof serialize !== "undefined") {
+      throw new Error("Deserialize of message not yet supported!");
+    }
+
+    // Serialize map if some strategy is existing
+    if (this.serializeMap.has(msgType)) {
+      throw new Error("Message deserialize not yet implemented!");
+    }
+
+    // Get bound callbacks
+    const callbackList: CallbackMapFunction[] = this.callbackMap.get(msgType);
+
+    // Handle no callback
+    if (typeof callbackList === "undefined") {
+      throw new Error(`No callback bound for type ${msgType}!`);
+    }
+
+    // Iterate over callbacks and execute them
+    callbackList.forEach(
+      (cb: CallbackMapFunction): void => {
+        cb(event.data);
+      },
+    );
+
     this.eventBus.emit("socket::message", event.data);
   }
 
@@ -340,9 +400,16 @@ export class TransportWebrtc {
     callback: CallbackMapFunction,
     remove: boolean = false,
   ): void {
+    // Handle invalid data
+    if (typeof type === "undefined" || typeof callback === "undefined") {
+      throw new Error("Invalid parameter passed to RegisterHandler!");
+    }
+
     // Check for reserve message type
-    if (this.reservedMessageTypes.indexOf(type) !== -1) {
-      throw new Error(`Message type ${type} only for internal usage!`);
+    if (remove && this.reservedMessageTypes.indexOf(type) !== -1) {
+      throw new Error(
+        `Message type ${type} used internally, removal not possible!`,
+      );
     }
 
     // Setup callbacks to insert
@@ -439,9 +506,8 @@ export class TransportWebrtc {
       throw new Error(`No serialization for message type ${type} existing`);
     }
 
-    // Handle data
+    // Increase necessary length for packet to serialize
     if (typeof data !== "undefined") {
-      // To preven linting errors
       len += countObjectLength(serialize);
     }
 

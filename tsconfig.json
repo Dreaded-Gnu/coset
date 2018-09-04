@@ -23,7 +23,7 @@
     "mode": "modules",
     "out": "doc",
     "exclude": "**/node_modules/**",
-    "theme": "default",
+    "theme": "node_modules/typedoc-clarity-theme/bin",
     "ignoreCompilerErrors": false,
     "excludePrivate": false,
     "excludeNotExported": false,

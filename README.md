@@ -102,7 +102,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Create wiki documentation about how to use library
   - [ ] Create example projects
 - [x] Add automatic documentation generation
-- [ ] Add automatic changelog generation
+- [x] Add automatic changelog generation
 - [x] Add code of conduct file
 - [x] Add content within contributing markdown
 - [x] Add github issue and pull request templates

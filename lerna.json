@@ -5,5 +5,15 @@
   "version": "independent",
   "npmClientArgs": [
     "--save-exact"
-  ]
+  ],
+  "changelog": {
+    "repo": "Dreaded-Gnu/coset",
+    "cacheDir": ".changelog",
+    "labels": {
+      "type: bug": ":bug: Bug Fix",
+      "type: enhancement": ":rocket: Enhancement",
+      "type: documentation": ":memo: Documentation",
+      "type: breaking": ":boom: Breaking Change"
+    }
+  }
 }

@@ -1,5 +1,5 @@
 
 **node_modules**
 
-packages/server/lib
-packages/common/lib
+lib/
+doc/

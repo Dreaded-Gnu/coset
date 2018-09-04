@@ -37,8 +37,9 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Test heartbeat with disconnect on timeout
   - [ ] Add disconnect of both connections on error
   - [ ] Find better place for SocketClose callback within webrtc
-- [ ] Add verbose output activated, when setting specific environment variable
-- [ ] Change data transfer for websockets and rtc to binary
+- [ ] Add verbose output activated, when setting specific environment variable by using `debug`
+- [ ] Encoding/Decoding of packages with registering serialization schemes and handler
+  - [x] Change data transfer for rtc to binary by using `arraybuffer`
   - [x] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive
 
     ```js
@@ -68,8 +69,16 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
     );
     ```
 
-  - [x] Implement encoding of data before send, when listener is set.
-  - [ ] Implement decoding of data after receive, when listener is set.
+  - [ ] Support (de-)serialization of data
+    - [ ] Implement encoding of data before send, when scheme is set.
+    - [ ] Implement decoding of data after receive, when scheme is set.
+    - [ ] Consider following scheme types
+      - [ ] `Byte`: 1 byte
+      - [ ] `ShortInt`: 2 byte
+      - [ ] `Int`: 4 bytes
+      - [ ] `Float`: 4 bytes
+      - [ ] `Double`: 8 bytes
+      - [ ] `String`: variable length until `\0`.
   - [ ] Throw errors, when trying to send/receive a message type without encode/decode handler
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc
@@ -87,11 +96,12 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
 - [ ] Add greenkeeper dependency management
 - [x] Add prettier
   - [x] Include prettier within tslint for packages
-  - [ ] Add and include prettier to eslint for plain javascript examples
-  - [ ] Add and include prettier to tslint for typescript examples
+  - [x] Add and include prettier to eslint for plain javascript examples
+  - [x] Add and include prettier to tslint for typescript examples
 - [ ] Create documentation
   - [ ] Create wiki documentation about how to use library
   - [ ] Create example projects
+- [x] Add automatic documentation generation
 - [ ] Add automatic changelog generation
 - [x] Add code of conduct file
 - [x] Add content within contributing markdown

@@ -18,5 +18,25 @@
   ],
   "exclude": [
     "node_modules"
-  ]
+  ],
+  "typedocOptions": {
+    "mode": "modules",
+    "out": "doc",
+    "exclude": "**/node_modules/**",
+    "theme": "default",
+    "ignoreCompilerErrors": false,
+    "excludePrivate": false,
+    "excludeNotExported": false,
+    "target": "ES6",
+    "moduleResolution": "node",
+    "preserveConstEnums": "true",
+    "stripInternal": false,
+    "suppressExcessPropertyErrors": false,
+    "suppressImplicitAnyIndexErrors": false,
+    "module": "commonjs",
+    "readme": "README.md",
+    "external-modulemap": ".*packages\/(@coset\/[^\/]+)\/.*",
+    "verbose": true,
+    "name": "@coset"
+  }
 }

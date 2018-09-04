@@ -5,7 +5,7 @@ const path = require("path");
 const url = require("url");
 
 // coset server dependency
-const coset = require("../../packages/server");
+const coset = require("../../packages/@coset/server");
 
 // create options object
 const httpsOptions = {

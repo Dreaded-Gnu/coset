@@ -1,4 +1,5 @@
 // Package dependencies
+import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
 import { default as WebSocket } from "ws";
 
@@ -14,6 +15,11 @@ import { TransportWebrtc } from "./transport/webrtc";
  * @extends {EventEmitter}
  */
 export class Transport extends EventEmitter {
+  /**
+   * Debugging instance
+   */
+  private readonly debug: Debug.IDebugger;
+
   /**
    * Communication eventbus between socket and rtc transport
    */
@@ -47,14 +53,17 @@ export class Transport extends EventEmitter {
     super();
 
     // Initialize attributes
+    this.debug = Debug("@coset/server:transport");
     this.id = id;
     this.eventBus = new EventEmitter<string>();
 
     // Setup transports
+    this.debug("Setup transport instances");
     this.socket = new TransportSocket(socket, option, this.eventBus);
     this.webrtc = new TransportWebrtc(option, this.eventBus);
 
     // Treat rtc connection as successful establish of connection
+    this.debug("Setup event handlers");
     this.eventBus.on("socket::connection", this.HandleOpen.bind(this));
   }
 
@@ -62,6 +71,8 @@ export class Transport extends EventEmitter {
    * Method to get id
    */
   public get Id(): string {
+    this.debug("Transport id requested");
+
     return this.id;
   }
 
@@ -76,6 +87,7 @@ export class Transport extends EventEmitter {
     callback: (data: object) => void,
     remove: boolean = false,
   ): void {
+    this.debug("%s handler to type %d", remove ? "Unbind" : "Bind", type);
     this.emit("socket::handler", type, callback, remove);
   }
 
@@ -91,6 +103,7 @@ export class Transport extends EventEmitter {
     structure?: object,
     remove: boolean = false,
   ): void {
+    this.debug("%s serialization to type %d", remove ? "Unbind" : "Bind", type);
     this.emit("socket::serialize", type, structure, remove);
   }
 
@@ -98,6 +111,7 @@ export class Transport extends EventEmitter {
    * Open handling
    */
   private HandleOpen(): void {
+    this.debug("Connection has been successful established!");
     this.emit("connection", this);
   }
 }

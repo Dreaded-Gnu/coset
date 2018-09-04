@@ -4,6 +4,7 @@ import { IncomingMessage as HttpIncomingMessage } from "http";
 import { Server as HttpsServer } from "https";
 
 // Additional package dependencies
+import * as Debug from "debug";
 import * as NodeUuid from "uuid";
 import * as WebSocket from "ws";
 
@@ -18,6 +19,11 @@ import { Transport } from "./transport";
  * @extends {EventEmitter}
  */
 export class Server extends EventEmitter {
+  /**
+   * Debugging instance
+   */
+  private readonly debug: Debug.IDebugger;
+
   /**
    * Server config options
    */
@@ -43,6 +49,10 @@ export class Server extends EventEmitter {
     // Call parent constructor
     super();
 
+    // Create instance
+    this.debug = Debug("@coset/server:server");
+    this.debug("Merging server configs");
+
     // Build server config
     let serverOption: IServerConfig = {
       pingInterval: 3000,
@@ -61,15 +71,18 @@ export class Server extends EventEmitter {
     }
 
     // Create socket server
+    this.debug("Setup socket server");
     this.socketServer = new WebSocket.Server(serverOption);
 
     // Setup server
+    this.debug("Setup socket connection handler");
     this.socketServer
       .on("connection", this.HandleConnection.bind(this))
       .on("error", this.HandleError.bind(this))
       .on("listening", this.HandleListen.bind(this));
 
     // Initialize socket map
+    this.debug("Initialize transport map and cache options");
     this.socketMap = new Map();
     this.option = serverOption;
   }
@@ -78,6 +91,7 @@ export class Server extends EventEmitter {
    * Close server
    */
   public Close(): void {
+    this.debug("Signal server close event!");
     this.socketServer.close();
   }
 
@@ -91,18 +105,23 @@ export class Server extends EventEmitter {
     webSocket: WebSocket,
     request: HttpIncomingMessage,
   ): void {
+    this.debug("Incoming connection, determining id");
     let socketId: string;
     do {
       socketId = NodeUuid.v4();
     } while (this.socketMap.has(socketId));
+    this.debug("Connection id %s", socketId);
 
     // Create socket instance
+    this.debug("Creating transport");
     const socket: Transport = new Transport(socketId, webSocket, this.option);
 
     // Add to map
+    this.debug("Caching transport by socket id");
     this.socketMap.set(socketId, socket);
 
     // Bind connection handler for passing socket out
+    this.debug("Bind transport event handler");
     socket.on("connection", this.HandleSocketConnected.bind(this));
   }
 
@@ -112,6 +131,7 @@ export class Server extends EventEmitter {
    * @param error Error to be bubbled up
    */
   private HandleError(error: Error): void {
+    this.debug("Error event %o", error);
     this.emit("error", Error);
   }
 
@@ -119,6 +139,7 @@ export class Server extends EventEmitter {
    * Listen handler simply passes out event
    */
   private HandleListen(): void {
+    this.debug("Server listening");
     this.emit("listening");
   }
 
@@ -128,6 +149,7 @@ export class Server extends EventEmitter {
    * @param socket transport to be bubbled up
    */
   private HandleSocketConnected(socket: Transport): void {
+    this.debug("Connection %s established", socket.Id);
     this.emit("connection", Transport);
   }
 }

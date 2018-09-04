@@ -37,7 +37,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Test heartbeat with disconnect on timeout
   - [ ] Add disconnect of both connections on error
   - [ ] Find better place for SocketClose callback within webrtc
-- [ ] Add verbose output activated, when setting specific environment variable by using `debug`
+- [x] Add verbose output activated, when setting specific environment variable by using `debug`
 - [ ] Encoding/Decoding of packages with registering serialization schemes and handler
   - [x] Change data transfer for rtc to binary by using `arraybuffer`
   - [x] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive

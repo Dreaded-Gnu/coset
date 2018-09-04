@@ -2,6 +2,7 @@
 import { notStrictEqual } from "assert";
 
 // Additional package dependencies
+import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
 import { default as WebSocket } from "ws";
 
@@ -19,6 +20,11 @@ export class TransportSocket {
    * Connection flag
    */
   private connected: boolean;
+
+  /**
+   * Debugging instance
+   */
+  private readonly debug: Debug.IDebugger;
 
   /**
    * Passed in event bus
@@ -57,8 +63,10 @@ export class TransportSocket {
     this.socket = socket;
     this.option = option;
     this.eventBus = eventBus;
+    this.debug = Debug("@coset/server:signal");
 
     // Bind handler
+    this.debug("Bind socket signal handler");
     this.socket
       .on("message", this.HandleMessage.bind(this))
       .on("close", this.HandleClose.bind(this))
@@ -66,12 +74,14 @@ export class TransportSocket {
       .on("pong", this.Hearbeat.bind(this));
 
     // Bind send handler
+    this.debug("Bind signal send event used for decoupled sending");
     this.eventBus.on("signal::send", this.Send.bind(this));
 
     // Set connected flag
     this.connected = true;
 
     // Start heartbeat
+    this.debug("Starting heartbeat");
     this.Hearbeat();
   }
 
@@ -79,6 +89,7 @@ export class TransportSocket {
    * Close socket
    */
   public Close(): void {
+    this.debug("Socket close event");
     this.socket.close();
   }
 
@@ -87,9 +98,11 @@ export class TransportSocket {
    */
   private DoPing(): void {
     // Send ping
+    this.debug("Send ping");
     this.socket.ping();
 
     // Set timeout
+    this.debug("Send disconnect timeout");
     this.pingTimeout = setTimeout(
       this.HandleTimeout.bind(this),
       this.option.pingTimeout,
@@ -103,6 +116,7 @@ export class TransportSocket {
    * @param reason close reason
    */
   private HandleClose(code: number, reason: string): void {
+    this.debug("Close event fired with %d and %s", code, reason);
     this.eventBus.emit("signal::close", code, reason);
   }
 
@@ -112,6 +126,7 @@ export class TransportSocket {
    * @param err error event data
    */
   private HandleError(err: Error): void {
+    this.debug("Error event triggered %o", err);
     this.eventBus.emit("signal::error", err);
   }
 
@@ -130,6 +145,7 @@ export class TransportSocket {
       notStrictEqual(msg.type, undefined);
 
       // Emit message
+      this.debug("%s message incomming, data: %o", msg.type, msg);
       this.eventBus.emit(`signal::${msg.type}`, msg);
     } catch (e) {
       throw Error("Invalid message request");
@@ -141,9 +157,11 @@ export class TransportSocket {
    */
   private HandleTimeout(): void {
     // Reset connected flag
+    this.debug("Ping timed out");
     this.connected = false;
 
     // Close socket
+    this.debug("Closing socket");
     this.Close();
   }
 
@@ -157,10 +175,15 @@ export class TransportSocket {
     }
 
     // Clear timeout
+    this.debug("Reset ping timeout");
     clearTimeout(this.pingTimeout);
 
     // Send ping with delay
-    setTimeout(this.DoPing.bind(this), this.option.pingInterval);
+    this.debug("Add ping timeout");
+    this.pingTimeout = setTimeout(
+      this.DoPing.bind(this),
+      this.option.pingInterval,
+    );
   }
 
   /**
@@ -169,6 +192,7 @@ export class TransportSocket {
    * @param msg message to send via socket
    */
   private Send(msg: string): void {
+    this.debug("Send message %s", msg);
     this.socket.send(msg);
   }
 }

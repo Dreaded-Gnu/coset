@@ -1,4 +1,5 @@
 // Additional package dependencies
+import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
 import * as wrtc from "wrtc";
 
@@ -101,6 +102,11 @@ export class TransportWebrtc {
   private dataChannel: wrtc.RTCDataChannel;
 
   /**
+   * Debugging instance
+   */
+  private readonly debug: Debug.IDebugger;
+
+  /**
    * Passed in event bus
    */
   private readonly eventBus: EventEmitter;
@@ -140,8 +146,10 @@ export class TransportWebrtc {
     // Save parameters
     this.option = option;
     this.eventBus = eventBus;
+    this.debug = Debug("@coset/server:webrtc");
 
     // Setup necessary event handler
+    this.debug("Setup event handler!");
     this.eventBus
       .on(`signal::${messageType.close}`, this.SignalClose.bind(this))
       .on(`signal::${messageType.webrtc.answer}`, this.WebrtcAnswer.bind(this))
@@ -155,6 +163,7 @@ export class TransportWebrtc {
       .on("socket::handler", this.RegisterHandler.bind(this));
 
     // Setup reserved messages and initialize maps
+    this.debug("Setup maps and reserved message types!");
     this.reservedMessageTypes = [
       WebrtcMessageType.Ping,
       WebrtcMessageType.Pong,
@@ -163,6 +172,7 @@ export class TransportWebrtc {
     this.callbackMap = new Map();
 
     // Setup internal message handlers
+    this.debug("Register pong handler!");
     this.RegisterHandler(
       WebrtcMessageType.Pong,
       this.Hearbeat.bind(this),
@@ -173,24 +183,30 @@ export class TransportWebrtc {
     // Initialize peer
     try {
       // Create peer connection and data channel
+      this.debug("Create rtc peer connection!");
       this.peerConnection = new wrtc.RTCPeerConnection();
+
+      this.debug("Create rtc data channel!");
       this.dataChannel = this.peerConnection.createDataChannel("data", {
         maxRetransmits: 0,
         ordered: false,
       });
 
       // Bind on data event listener
+      this.debug("Bind datachannel ready handler!");
       this.peerConnection.addEventListener(
         "datachannel",
         this.DatachannelAdded.bind(this),
       );
 
       // Bind ice candidate listener
+      this.debug("Bind ice candidate handler!");
       this.peerConnection.addEventListener(
         "icecandidate",
         this.IceCandidate.bind(this),
       );
     } catch (e) {
+      this.debug("WebRTC not supported!");
       throw new Error("WebRTC DataChannel not supported!");
     }
   }
@@ -201,13 +217,16 @@ export class TransportWebrtc {
    * @param event event data
    */
   private DatachannelAdded(event: wrtc.RTCDataChannelEvent): void {
+    this.debug("Data channel ready!");
     // Get data channel
     const dataChannel: wrtc.RTCDataChannel = event.channel;
 
     // Set array buffer binary type
+    this.debug("Set data channel binary type to arraybuffer!");
     dataChannel.binaryType = "arraybuffer";
 
     // Add event handler
+    this.debug("Add data channel event listener!");
     dataChannel.addEventListener(
       "close",
       this.HandleClose.bind(this, dataChannel),
@@ -222,9 +241,11 @@ export class TransportWebrtc {
    */
   private DoPing(): void {
     // Send ping
+    this.debug("Send ping!");
     this.Send(WebrtcMessageType.Ping);
 
     // Set timeout
+    this.debug("Set ping timeout!");
     this.pingTimeout = setTimeout(
       this.HandleTimeout.bind(this),
       this.option.pingTimeout,
@@ -237,13 +258,17 @@ export class TransportWebrtc {
    * @param event event data
    */
   private HandleClose(channel: wrtc.RTCDataChannel, event: Event): void {
+    this.debug("Close data channel emitted!");
+
     // Reset handler
+    this.debug("Remove event listener!");
     channel.removeEventListener("close", this.HandleClose.bind(this));
     channel.removeEventListener("open", this.HandleOpen.bind(this));
     channel.removeEventListener("message", this.HandleMessage.bind(this));
     channel.removeEventListener("error", this.HandleError.bind(this));
 
     // Close channel
+    this.debug("Close data channel!");
     channel.close();
   }
 
@@ -255,6 +280,7 @@ export class TransportWebrtc {
    * @param event error event
    */
   private HandleError(event: Event): void {
+    this.debug("Error event emitted %o", event);
     this.eventBus.emit("socket::error", event);
   }
 
@@ -267,7 +293,10 @@ export class TransportWebrtc {
    * @param event message event
    */
   private HandleMessage(event: MessageEvent): void {
+    this.debug("Incoming message");
+
     // Extract message type
+    this.debug("Decode message type");
     const msgType: number = new Int32Array(
       event.data.slice(Size.Empty, Size.Integer),
     )[0];
@@ -277,15 +306,18 @@ export class TransportWebrtc {
     const messageLength: number = event.data.byteLength;
 
     // Get serialization information
+    this.debug("Get serialize object");
     const serialize: object = this.serializeMap.get(msgType);
 
     // Extend check length by expected message size
     if (typeof serialize !== "undefined") {
+      this.debug("Build check length");
       checkLength += countObjectLength(serialize);
     }
 
     // Check array buffer length
     if (event.data.byteLength !== checkLength) {
+      this.debug("Invalid message length");
       throw new Error(
         `Invalid message size, expected ${checkLength} got ${messageLength}`,
       );
@@ -293,23 +325,22 @@ export class TransportWebrtc {
 
     // Handle deserialization
     if (typeof serialize !== "undefined") {
+      this.debug("Deserialize data");
       throw new Error("Deserialize of message not yet supported!");
     }
 
-    // Serialize map if some strategy is existing
-    if (this.serializeMap.has(msgType)) {
-      throw new Error("Message deserialize not yet implemented!");
-    }
-
     // Get bound callbacks
+    this.debug("Retrieving bound callbacks to execute");
     const callbackList: CallbackMapFunction[] = this.callbackMap.get(msgType);
 
     // Handle no callback
     if (typeof callbackList === "undefined") {
+      this.debug("No callback found for message type");
       throw new Error(`No callback bound for type ${msgType}!`);
     }
 
     // Iterate over callbacks and execute them
+    this.debug("Executing callback list with data");
     callbackList.forEach(
       (cb: CallbackMapFunction): void => {
         cb(event.data);
@@ -324,12 +355,15 @@ export class TransportWebrtc {
    */
   private HandleOpen(event: MessageEvent): void {
     // Set connection flag
+    this.debug("WebRtc connection opened");
     this.connected = true;
 
     // Start heartbeat
+    this.debug("Start heartbeat");
     this.Hearbeat();
 
     // Emit connection success
+    this.debug("Emit connection success");
     this.eventBus.emit("socket::connection", this);
   }
 
@@ -340,7 +374,9 @@ export class TransportWebrtc {
    */
   private HandleTimeout(): void {
     // Reset connected flag
+    this.debug("Connection timed out");
     this.connected = false;
+
     throw new Error("Timeout handling to be added!");
   }
 
@@ -354,10 +390,15 @@ export class TransportWebrtc {
     }
 
     // Clear timeout
+    this.debug("Reset ping timeout");
     clearTimeout(this.pingTimeout);
 
     // Send ping with delay
-    setTimeout(this.DoPing.bind(this), this.option.pingInterval);
+    this.debug("Add ping timeout");
+    this.pingTimeout = setTimeout(
+      this.DoPing.bind(this),
+      this.option.pingInterval,
+    );
   }
 
   /**
@@ -378,6 +419,7 @@ export class TransportWebrtc {
     }
 
     // Send candidate back
+    this.debug("IceCandidate event triggered");
     this.eventBus.emit(
       "signal::send",
       JSON.stringify({
@@ -402,24 +444,32 @@ export class TransportWebrtc {
     remove: boolean = false,
     internal: boolean = false,
   ): void {
+    this.debug("%s handler for type %d", remove ? "Unbind" : "Bind", type);
     // Handle invalid data
     if (typeof type === "undefined" || typeof callback === "undefined") {
+      this.debug("RegisterHandler called with invalid data");
       throw new Error("Invalid parameter passed to RegisterHandler!");
     }
 
     // Check for reserve message type
     if (!internal && this.reservedMessageTypes.indexOf(type) !== -1) {
+      this.debug(
+        "Tried to %s internal message type %d",
+        remove ? "Unbind" : "Bind",
+        type,
+      );
       throw new Error(
         `Message type ${type} used internally, removal or add not possible!`,
       );
     }
 
     // Setup callbacks to insert
-    let callbackList: CallbackMapFunction[] = [];
+    this.debug("Get existing bound callbacks");
+    let callbackList: CallbackMapFunction[] = this.callbackMap.get(type);
 
-    // Overwrite if existing
-    if (this.callbackMap.has(type)) {
-      callbackList = this.callbackMap.get(type);
+    // Initialize if not existing
+    if (typeof callbackList === "undefined") {
+      callbackList = [];
     }
 
     // Get callback index
@@ -427,11 +477,14 @@ export class TransportWebrtc {
 
     // Check for existance before removal
     if (remove && currentCallbackIndex !== -1) {
+      this.debug("Try to remove not bound handler");
+
       return;
     }
 
     // Handle remove
     if (remove) {
+      this.debug("Removing debug handler at %d", currentCallbackIndex);
       callbackList.splice(currentCallbackIndex, 1);
 
       return;
@@ -439,10 +492,15 @@ export class TransportWebrtc {
 
     // Handle already added
     if (currentCallbackIndex !== -1) {
+      this.debug(
+        "Callback for type %d already registered",
+        currentCallbackIndex,
+      );
       throw new Error(`Callback for message type ${type} already registered!`);
     }
 
     // Push callback and overwrite map entry
+    this.debug("Push back callback");
     callbackList.push(callback);
     this.callbackMap.set(type, callbackList);
   }
@@ -459,13 +517,17 @@ export class TransportWebrtc {
     structure?: object,
     remove: boolean = false,
   ): void {
+    this.debug("%s serializaion for type %d", remove ? "Unbind" : "Bind", type);
+
     // Check for reserve message type
     if (this.reservedMessageTypes.indexOf(type) !== -1) {
+      this.debug("Message type reserved for internal");
       throw new Error(`Message type ${type} only for internal usage!`);
     }
 
     // Handle already set serialize
     if (!remove && this.serializeMap.has(type)) {
+      this.debug("Serialization to add already existing");
       throw new Error(
         `Register serialize for type ${type} already registered!`,
       );
@@ -473,12 +535,14 @@ export class TransportWebrtc {
 
     // Handle remove
     if (remove) {
+      this.debug("Remove serialization for type %d", type);
       this.serializeMap.delete(type);
 
       return;
     }
 
     // Set serialize structure
+    this.debug("Add serialization");
     this.serializeMap.set(type, structure);
   }
 
@@ -537,21 +601,25 @@ export class TransportWebrtc {
    * Handler for socket close to kickstart datachannel close
    */
   private SignalClose(): void {
+    this.debug("Signal close handler called");
     // Close rtc peer connection if existing
     if (typeof this.peerConnection === "undefined") {
       return;
     }
 
     // Remove channel callback
+    this.debug("Remove datachannel event listener");
     this.peerConnection.removeEventListener(
       "datachannel",
       this.DatachannelAdded.bind(this),
     );
 
     // Close connection
+    this.debug("Starting close of datachannel");
     this.peerConnection.close();
 
     // Unset peer connection and connection flag
+    this.debug("Unset internal attributes");
     this.peerConnection = undefined;
     this.dataChannel = undefined;
     this.connected = false;
@@ -563,15 +631,18 @@ export class TransportWebrtc {
    * @param msg message received from socket transport
    */
   private async WebrtcAnswer(msg: IMessageStructure): Promise<void> {
+    this.debug("Incomming webrtc answer");
     // Check connected
     if (this.connected) {
       return;
     }
 
     // Extract payload
+    this.debug("Extracting webrtc payload");
     const payload: wrtc.RTCSessionDescriptionInit = msg.payload as wrtc.RTCSessionDescriptionInit;
 
     // Set remote description
+    this.debug("Set payload as remote description");
     await this.peerConnection.setRemoteDescription(
       new wrtc.RTCSessionDescription(payload),
     );
@@ -583,21 +654,26 @@ export class TransportWebrtc {
    * @param msg message received from socket transport
    */
   private async WebrtcIceCandidate(msg: IMessageStructure): Promise<void> {
+    this.debug("Incomming webrtc ice candidate");
     // Check connected
     if (this.connected) {
       return;
     }
 
     // Get payload
+    this.debug("Extracting webrtc payload");
     const payload: wrtc.RTCIceCandidateInit = msg.payload as wrtc.RTCIceCandidate;
 
     // Create rtc ice candidate
+    this.debug("Create rtc ice candidate");
     const candidate: wrtc.RTCIceCandidate = new wrtc.RTCIceCandidate(payload);
 
     // Wait for add of ice candidate
+    this.debug("Add ice candidate to peerConnection");
     await this.peerConnection.addIceCandidate(candidate);
 
     // Return candidate
+    this.debug("Send back rtc candidate to client");
     this.eventBus.emit(
       "signal::send",
       JSON.stringify({
@@ -613,18 +689,22 @@ export class TransportWebrtc {
    * @param msg message received from socket transport
    */
   private async WebrtcOffer(msg: IMessageStructure): Promise<void> {
+    this.debug("Incomming webrtc offer");
     // Check connected
     if (this.connected) {
       return;
     }
 
     // Extract payload
+    this.debug("Extracting webrtc payload");
     const payload: wrtc.RTCSessionDescriptionInit = msg.payload as wrtc.RTCSessionDescriptionInit;
 
     // Set remote description
+    this.debug("Set rtc remote description");
     await this.peerConnection.setRemoteDescription(payload);
 
     // Create answer
+    this.debug("Creating answer");
     const answer: wrtc.RTCSessionDescriptionInit = await this.peerConnection.createAnswer(
       {
         offerToReceiveAudio: false,
@@ -633,9 +713,11 @@ export class TransportWebrtc {
     );
 
     // Add answer as local description
+    this.debug("Set answer as local description");
     await this.peerConnection.setLocalDescription(answer);
 
     // Send answer back
+    this.debug("Send back answer");
     this.eventBus.emit(
       "signal::send",
       JSON.stringify({

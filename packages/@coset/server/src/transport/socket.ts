@@ -7,13 +7,12 @@ import * as EventEmitter from "eventemitter3";
 import { default as WebSocket } from "ws";
 
 // Server configs
+import { constant } from "./../constant";
 import { IMessageStructure } from "./../message/istructure";
 import { IServerConfig } from "./../server/iconfig";
 
 /**
  * Socket transport wrapper
- *
- * @export
  */
 export class TransportSocket {
   /**
@@ -63,7 +62,7 @@ export class TransportSocket {
     this.socket = socket;
     this.option = option;
     this.eventBus = eventBus;
-    this.debug = Debug("@coset/server:signal");
+    this.debug = Debug(`${constant.packageName}:signal`);
 
     // Bind handler
     this.debug("Bind socket signal handler");

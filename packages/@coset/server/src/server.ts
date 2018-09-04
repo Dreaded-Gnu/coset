@@ -9,14 +9,12 @@ import * as NodeUuid from "uuid";
 import * as WebSocket from "ws";
 
 // Local dependencies
+import { constant } from "./constant";
 import { IServerConfig } from "./server/iconfig";
 import { Transport } from "./transport";
 
 /**
  * Server class
- *
- * @export
- * @extends {EventEmitter}
  */
 export class Server extends EventEmitter {
   /**
@@ -50,7 +48,7 @@ export class Server extends EventEmitter {
     super();
 
     // Create instance
-    this.debug = Debug("@coset/server:server");
+    this.debug = Debug(`${constant.packageName}:server`);
     this.debug("Merging server configs");
 
     // Build server config

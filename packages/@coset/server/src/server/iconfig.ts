@@ -2,8 +2,6 @@ import { Server } from "https";
 
 /**
  * Server config
- *
- * @export
  */
 export interface IServerConfig {
   /**

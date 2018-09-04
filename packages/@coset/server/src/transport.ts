@@ -4,15 +4,13 @@ import * as EventEmitter from "eventemitter3";
 import { default as WebSocket } from "ws";
 
 // Import local dependencies
+import { constant } from "./constant";
 import { IServerConfig } from "./server/iconfig";
 import { TransportSocket } from "./transport/socket";
 import { TransportWebrtc } from "./transport/webrtc";
 
 /**
  * Transport class
- *
- * @export
- * @extends {EventEmitter}
  */
 export class Transport extends EventEmitter {
   /**
@@ -53,7 +51,7 @@ export class Transport extends EventEmitter {
     super();
 
     // Initialize attributes
-    this.debug = Debug("@coset/server:transport");
+    this.debug = Debug(`${constant.packageName}:transport`);
     this.id = id;
     this.eventBus = new EventEmitter<string>();
 

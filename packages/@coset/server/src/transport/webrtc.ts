@@ -4,6 +4,7 @@ import * as EventEmitter from "eventemitter3";
 import * as wrtc from "wrtc";
 
 // Import local dependencies
+import { constant } from "./../constant";
 import { IMessageStructure } from "./../message/istructure";
 import { messageType } from "./../message/itype";
 import { IServerConfig } from "./../server/iconfig";
@@ -82,8 +83,6 @@ const objectToBuffer: (
 
 /**
  * WebRTC DataChannel transport wrapper
- *
- * @export
  */
 export class TransportWebrtc {
   /**
@@ -146,7 +145,7 @@ export class TransportWebrtc {
     // Save parameters
     this.option = option;
     this.eventBus = eventBus;
-    this.debug = Debug("@coset/server:webrtc");
+    this.debug = Debug(`${constant.packageName}:webrtc`);
 
     // Setup necessary event handler
     this.debug("Setup event handler!");

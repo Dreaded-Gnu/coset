@@ -4,11 +4,11 @@ import { notStrictEqual } from "assert";
 // Additional package dependencies
 import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
-import { default as WebSocket } from "ws";
+import * as WebSocket from "ws";
 
 // Server configs
 import { constant } from "./../constant";
-import { IMessageStructure } from "./../message/istructure";
+import { IMessageSignalStructure } from "./../message/signal/istructure";
 import { IServerConfig } from "./../server/iconfig";
 
 /**
@@ -19,6 +19,11 @@ export class TransportSocket {
    * Connection flag
    */
   private connected: boolean;
+
+  /**
+   * Connection timeout
+   */
+  private connectTimeout: number;
 
   /**
    * Debugging instance
@@ -89,23 +94,33 @@ export class TransportSocket {
    */
   public Close(): void {
     this.debug("Socket close event");
-    this.socket.close();
+    this.socket.terminate();
   }
 
   /**
    * Execute ping
    */
   private DoPing(): void {
-    // Send ping
-    this.debug("Send ping");
-    this.socket.ping();
+    // Clear timeout
+    this.debug("Clear timeouts");
+    clearTimeout(this.connectTimeout);
+    clearTimeout(this.pingTimeout);
 
     // Set timeout
-    this.debug("Send disconnect timeout");
-    this.pingTimeout = setTimeout(
+    this.debug("Set disconnect timeout");
+    this.connectTimeout = setTimeout(
       this.HandleTimeout.bind(this),
       this.option.pingTimeout,
     );
+
+    // Check connection state
+    if (this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    // Send ping
+    this.debug("Send ping");
+    this.socket.ping();
   }
 
   /**
@@ -138,7 +153,7 @@ export class TransportSocket {
     // Try to decode message
     try {
       // Parse message
-      const msg: IMessageStructure = JSON.parse(data.toString());
+      const msg: IMessageSignalStructure = JSON.parse(data.toString());
 
       // Check for not equal
       notStrictEqual(msg.type, undefined);
@@ -159,9 +174,14 @@ export class TransportSocket {
     this.debug("Ping timed out");
     this.connected = false;
 
+    // Reset timeout
+    this.debug("Reset timeout");
+    clearTimeout(this.connectTimeout);
+    clearTimeout(this.pingTimeout);
+
     // Close socket
-    this.debug("Closing socket");
-    this.Close();
+    this.debug("Terminating socket");
+    this.socket.terminate();
   }
 
   /**

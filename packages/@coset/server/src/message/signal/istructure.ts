@@ -3,7 +3,7 @@ import * as wrtc from "wrtc";
 /**
  * Message structure
  */
-export interface IMessageStructure {
+export interface IMessageSignalStructure {
   /**
    * Message payload
    */

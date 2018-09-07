@@ -1,7 +1,7 @@
 /**
  * Interface for webrtc message subtype
  */
-interface IWebrtcMessageType {
+interface IMessageSignalWebrtcType {
   /**
    * WebRTC answer message
    */
@@ -21,7 +21,7 @@ interface IWebrtcMessageType {
 /**
  * Interface for export
  */
-interface IMessageType {
+interface IMessageSignalType {
   /**
    * Close message
    */
@@ -30,10 +30,10 @@ interface IMessageType {
   /**
    * Webrtc message type
    */
-  webrtc: IWebrtcMessageType;
+  webrtc: IMessageSignalWebrtcType;
 }
 
-export const messageType: IMessageType = {
+export const messageSignalType: IMessageSignalType = {
   close: "close",
   webrtc: {
     answer: "webrtc-answer",

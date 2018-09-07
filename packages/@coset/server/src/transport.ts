@@ -9,6 +9,8 @@ import { IServerConfig } from "./server/iconfig";
 import { TransportSocket } from "./transport/socket";
 import { TransportWebrtc } from "./transport/webrtc";
 
+import { messageSignalType } from "./message/signal/type";
+
 /**
  * Transport class
  */
@@ -60,9 +62,12 @@ export class Transport extends EventEmitter {
     this.socket = new TransportSocket(socket, option, this.eventBus);
     this.webrtc = new TransportWebrtc(option, this.eventBus);
 
-    // Treat rtc connection as successful establish of connection
+    // Setup event handler
     this.debug("Setup event handlers");
-    this.eventBus.on("socket::connection", this.HandleOpen.bind(this));
+    this.eventBus
+      .on("socket::connection", this.HandleOpen.bind(this))
+      .on("socket::close", this.SocketClose.bind(this))
+      .on(`signal::${messageSignalType.close}`, this.SignalClose.bind(this));
   }
 
   /**
@@ -111,5 +116,22 @@ export class Transport extends EventEmitter {
   private HandleOpen(): void {
     this.debug("Connection has been successful established!");
     this.emit("connection", this);
+  }
+
+  /**
+   * Callback for signal close
+   */
+  private SignalClose(): void {
+    this.debug("SignalClose triggered!");
+    this.webrtc.Close();
+    this.emit("close");
+  }
+
+  /**
+   * Callback for rtc close
+   */
+  private SocketClose(): void {
+    this.debug("SocketClose triggered!");
+    this.socket.Close();
   }
 }

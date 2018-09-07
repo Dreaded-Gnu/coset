@@ -32,11 +32,10 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Use event bus for connecting websocket and webrtc transport layer instead of passing them around
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
-  - [ ] Add disconnect of both transports when one or both disconnected or emitted an error
+  - [ ] Add disconnect of both transports when one or both disconnected or emitted an error ( currently rtc peer connection is going to be opened again after closing it )
   - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe.
   - [ ] Test heartbeat with disconnect on timeout
-  - [ ] Add disconnect of both connections on error
-  - [ ] Find better place for SocketClose callback within webrtc
+  - [x] Find better place for SocketClose callback within webrtc
 - [x] Add verbose output activated, when setting specific environment variable by using `debug`
 - [ ] Encoding/Decoding of packages with registering serialization schemes and handler
   - [x] Change data transfer for rtc to binary by using `arraybuffer`
@@ -72,7 +71,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Support (de-)serialization of data
     - [ ] Implement encoding of data before send, when scheme is set.
     - [ ] Implement decoding of data after receive, when scheme is set.
-    - [ ] Consider following scheme types
+    - [ ] Consider following scheme types signed and unsigned
       - [ ] `Byte`: 1 byte
       - [ ] `ShortInt`: 2 byte
       - [ ] `Int`: 4 bytes

@@ -3,83 +3,20 @@ import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
 import * as wrtc from "wrtc";
 
+// Internal dependencies
+import { Serialize, Size } from "@coset/common";
+
 // Import local dependencies
 import { constant } from "./../constant";
-import { IMessageStructure } from "./../message/istructure";
-import { messageType } from "./../message/itype";
+import { IMessageSignalStructure } from "./../message/signal/istructure";
+import { messageSignalType } from "./../message/signal/type";
+import { MessageSocketType } from "./../message/socket/type";
 import { IServerConfig } from "./../server/iconfig";
-
-/**
- * Used sizes for transform package into array buffer
- */
-enum Size {
-  Empty = 0,
-  Integer = 4,
-}
-
-/**
- * WebRTC built in message types
- */
-enum WebrtcMessageType {
-  Ping = 0,
-  Pong = 1,
-}
 
 /**
  * Callback map function type
  */
 type CallbackMapFunction = (data?: object) => void;
-
-/**
- * Internal count helper
- *
- * @param obj serialize object to count bytes of
- * @return amount of bytes for array buffer
- */
-const countObjectLength: (obj: object) => number = (obj: object): number => {
-  // Initialize initial length with empty
-  let byteLength: number = Size.Empty;
-
-  // Loop recursively through object
-  for (const key in obj) {
-    // Skip invalid
-    if (!obj.hasOwnProperty(key)) {
-      continue;
-    }
-
-    // Handle object in object
-    if (typeof obj[key] !== "number") {
-      byteLength += countObjectLength(obj[key]);
-      continue;
-    }
-
-    // Normal byte amount
-    byteLength += parseInt(obj[key], 10);
-  }
-
-  return byteLength;
-};
-
-/**
- * Object to array buffer converter
- *
- * @todo Throw error when object doesn't match structure
- *
- * @param serialize serialize object
- * @param data data object
- * @param byteLength byte length for array buffer
- */
-const objectToBuffer: (
-  serialize: object,
-  data: object,
-  byteLength: number,
-) => ArrayBuffer = (
-  serialize: object,
-  data: object,
-  byteLength: number,
-): ArrayBuffer => {
-  throw new Error("Object to buffer helper not yet written!");
-};
 
 /**
  * WebRTC DataChannel transport wrapper
@@ -131,6 +68,11 @@ export class TransportWebrtc {
   private readonly reservedMessageTypes: number[];
 
   /**
+   * Serialize utility
+   */
+  private readonly serialize: Serialize;
+
+  /**
    * Serialize map
    */
   private readonly serializeMap: Map<number, object>;
@@ -146,15 +88,21 @@ export class TransportWebrtc {
     this.option = option;
     this.eventBus = eventBus;
     this.debug = Debug(`${constant.packageName}:webrtc`);
+    this.serialize = new Serialize();
 
     // Setup necessary event handler
     this.debug("Setup event handler!");
     this.eventBus
-      .on(`signal::${messageType.close}`, this.SignalClose.bind(this))
-      .on(`signal::${messageType.webrtc.answer}`, this.WebrtcAnswer.bind(this))
-      .on(`signal::${messageType.webrtc.offer}`, this.WebrtcOffer.bind(this))
       .on(
-        `signal::${messageType.webrtc.candidate}`,
+        `signal::${messageSignalType.webrtc.answer}`,
+        this.WebrtcAnswer.bind(this),
+      )
+      .on(
+        `signal::${messageSignalType.webrtc.offer}`,
+        this.WebrtcOffer.bind(this),
+      )
+      .on(
+        `signal::${messageSignalType.webrtc.candidate}`,
         this.WebrtcIceCandidate.bind(this),
       )
       .on("socket::send", this.Send.bind(this))
@@ -164,8 +112,8 @@ export class TransportWebrtc {
     // Setup reserved messages and initialize maps
     this.debug("Setup maps and reserved message types!");
     this.reservedMessageTypes = [
-      WebrtcMessageType.Ping,
-      WebrtcMessageType.Pong,
+      MessageSocketType.Ping,
+      MessageSocketType.Pong,
     ];
     this.serializeMap = new Map();
     this.callbackMap = new Map();
@@ -173,7 +121,7 @@ export class TransportWebrtc {
     // Setup internal message handlers
     this.debug("Register pong handler!");
     this.RegisterHandler(
-      WebrtcMessageType.Pong,
+      MessageSocketType.Pong,
       this.Hearbeat.bind(this),
       false,
       true,
@@ -211,6 +159,35 @@ export class TransportWebrtc {
   }
 
   /**
+   * Handler for socket close to kickstart datachannel close
+   */
+  public Close(): void {
+    // Close rtc peer connection if existing
+    if (typeof this.peerConnection === "undefined") {
+      return;
+    }
+    this.debug("Signal close handler called");
+
+    // Remove channel callback
+    this.debug("Remove datachannel event listener");
+    this.peerConnection.removeEventListener(
+      "datachannel",
+      this.DatachannelAdded.bind(this),
+    );
+
+    // Close connection
+    this.debug("Starting close of datachannel");
+    this.dataChannel.close();
+    this.peerConnection.close();
+
+    // Unset peer connection and connection flag
+    this.debug("Unset internal attributes");
+    this.peerConnection = undefined;
+    this.dataChannel = undefined;
+    this.connected = false;
+  }
+
+  /**
    * Handle datachannel listener
    *
    * @param event event data
@@ -241,7 +218,7 @@ export class TransportWebrtc {
   private DoPing(): void {
     // Send ping
     this.debug("Send ping!");
-    this.Send(WebrtcMessageType.Ping);
+    this.Send(MessageSocketType.Ping);
 
     // Set timeout
     this.debug("Set ping timeout!");
@@ -258,6 +235,7 @@ export class TransportWebrtc {
    */
   private HandleClose(channel: wrtc.RTCDataChannel, event: Event): void {
     this.debug("Close data channel emitted!");
+    this.connected = false;
 
     // Reset handler
     this.debug("Remove event listener!");
@@ -266,9 +244,16 @@ export class TransportWebrtc {
     channel.removeEventListener("message", this.HandleMessage.bind(this));
     channel.removeEventListener("error", this.HandleError.bind(this));
 
+    // Clear timeouts
+    this.debug("Clear ping timeout!");
+    clearTimeout(this.pingTimeout);
+
     // Close channel
     this.debug("Close data channel!");
     channel.close();
+
+    // Emit connection shutdown
+    this.eventBus.emit("socket::close");
   }
 
   /**
@@ -288,45 +273,27 @@ export class TransportWebrtc {
    *
    * @todo add message parsing
    * @todo add error handling
+   * @todo switch to DataView instead of typed array
    *
    * @param event message event
    */
   private HandleMessage(event: MessageEvent): void {
     this.debug("Incoming message");
 
+    // Build views
+    const typeView: DataView = new DataView(event.data, 0, Size.UInt);
+    const dataView: DataView = new DataView(event.data, Size.UInt);
+
     // Extract message type
     this.debug("Decode message type");
-    const msgType: number = new Int32Array(
-      event.data.slice(Size.Empty, Size.Integer),
-    )[0];
-
-    // Initial length is only size for type number
-    let checkLength: number = Size.Integer;
-    const messageLength: number = event.data.byteLength;
+    const msgType: number = typeView.getUint32(0);
 
     // Get serialization information
     this.debug("Get serialize object");
     const serialize: object = this.serializeMap.get(msgType);
 
-    // Extend check length by expected message size
-    if (typeof serialize !== "undefined") {
-      this.debug("Build check length");
-      checkLength += countObjectLength(serialize);
-    }
-
-    // Check array buffer length
-    if (event.data.byteLength !== checkLength) {
-      this.debug("Invalid message length");
-      throw new Error(
-        `Invalid message size, expected ${checkLength} got ${messageLength}`,
-      );
-    }
-
-    // Handle deserialization
-    if (typeof serialize !== "undefined") {
-      this.debug("Deserialize data");
-      throw new Error("Deserialize of message not yet supported!");
-    }
+    // Transform data to object
+    const data: object = this.serialize.ToObject(serialize, dataView.buffer);
 
     // Get bound callbacks
     this.debug("Retrieving bound callbacks to execute");
@@ -342,7 +309,7 @@ export class TransportWebrtc {
     this.debug("Executing callback list with data");
     callbackList.forEach(
       (cb: CallbackMapFunction): void => {
-        cb(event.data);
+        cb(data);
       },
     );
   }
@@ -376,7 +343,8 @@ export class TransportWebrtc {
     this.debug("Connection timed out");
     this.connected = false;
 
-    throw new Error("Timeout handling to be added!");
+    // Close peer connection
+    this.peerConnection.close();
   }
 
   /**
@@ -423,7 +391,7 @@ export class TransportWebrtc {
       "signal::send",
       JSON.stringify({
         payload: event.candidate,
-        type: messageType.webrtc.candidate,
+        type: messageSignalType.webrtc.candidate,
       }),
     );
   }
@@ -557,71 +525,45 @@ export class TransportWebrtc {
       return;
     }
 
-    // Initial length is only size for type number
-    let len: number = Size.Integer;
+    // Debug output
+    this.debug("Send message with type %d and data %o", type, data);
+    const offset: number = Size.UInt;
 
     // Get serialization information
+    this.debug("Gather serialization strategy");
     const serialize: object = this.serializeMap.get(type);
 
     // Handle passed data but no serialize object
     if (typeof serialize === "undefined" && typeof data !== "undefined") {
+      this.debug("Error missing data for type %d", type);
       throw new Error(`No serialization for message type ${type} existing`);
     }
 
-    // Increase necessary length for packet to serialize
-    if (typeof data !== "undefined") {
-      len += countObjectLength(serialize);
-    }
+    // Initialize DateView
+    this.debug("Generating data view");
+    const dataView: DataView = new DataView(
+      this.serialize.ToBuffer(serialize, data),
+    );
 
-    // Create typed arrays for later transport
-    const typeBuffer: Uint32Array = new Uint32Array([type]);
-    let objectBuffer: ArrayBuffer;
+    // Generate view for final packet
+    this.debug("Generating view for merging data view and message type");
+    const bufferView: DataView = new DataView(
+      new ArrayBuffer(offset + dataView.byteLength),
+    );
 
-    // Allocate buffer
-    const buffer: Uint8Array = new Uint8Array(len);
+    // Push message type
+    this.debug("Saving message type as undefined");
+    bufferView.setUint32(0, type);
 
-    // Add message type
-    buffer.set(new Uint8Array(typeBuffer.buffer), 0);
-
-    // Append object buffer data
-    if (typeof data !== "undefined") {
-      // Translate object into array buffer
-      objectBuffer = objectToBuffer(serialize, data, len - Size.Integer);
-
-      // Add data to transfer
-      buffer.set(new Uint8Array(objectBuffer), objectBuffer.byteLength);
+    // Transfer buffer byte by byte
+    this.debug("Merging data view into buffer view");
+    for (let i: number = offset; i < dataView.byteLength + offset; i++) {
+      bufferView.setInt8(i, dataView.getInt8(i - offset));
     }
 
     // Send package
-    this.dataChannel.send(buffer);
-  }
-
-  /**
-   * Handler for socket close to kickstart datachannel close
-   */
-  private SignalClose(): void {
-    this.debug("Signal close handler called");
-    // Close rtc peer connection if existing
-    if (typeof this.peerConnection === "undefined") {
-      return;
-    }
-
-    // Remove channel callback
-    this.debug("Remove datachannel event listener");
-    this.peerConnection.removeEventListener(
-      "datachannel",
-      this.DatachannelAdded.bind(this),
-    );
-
-    // Close connection
-    this.debug("Starting close of datachannel");
-    this.peerConnection.close();
-
-    // Unset peer connection and connection flag
-    this.debug("Unset internal attributes");
-    this.peerConnection = undefined;
-    this.dataChannel = undefined;
-    this.connected = false;
+    this.debug("Transmit merged view buffer via rtc");
+    this.dataChannel.send(bufferView.buffer);
   }
 
   /**
@@ -629,7 +571,7 @@ export class TransportWebrtc {
    *
    * @param msg message received from socket transport
    */
-  private async WebrtcAnswer(msg: IMessageStructure): Promise<void> {
+  private async WebrtcAnswer(msg: IMessageSignalStructure): Promise<void> {
     this.debug("Incomming webrtc answer");
     // Check connected
     if (this.connected) {
@@ -652,7 +594,9 @@ export class TransportWebrtc {
    *
    * @param msg message received from socket transport
    */
-  private async WebrtcIceCandidate(msg: IMessageStructure): Promise<void> {
+  private async WebrtcIceCandidate(
+    msg: IMessageSignalStructure,
+  ): Promise<void> {
     this.debug("Incomming webrtc ice candidate");
     // Check connected
     if (this.connected) {
@@ -677,7 +621,7 @@ export class TransportWebrtc {
       "signal::send",
       JSON.stringify({
         payload: candidate,
-        type: messageType.webrtc.candidate,
+        type: messageSignalType.webrtc.candidate,
       }),
     );
   }
@@ -687,7 +631,7 @@ export class TransportWebrtc {
    *
    * @param msg message received from socket transport
    */
-  private async WebrtcOffer(msg: IMessageStructure): Promise<void> {
+  private async WebrtcOffer(msg: IMessageSignalStructure): Promise<void> {
     this.debug("Incomming webrtc offer");
     // Check connected
     if (this.connected) {
@@ -721,7 +665,7 @@ export class TransportWebrtc {
       "signal::send",
       JSON.stringify({
         payload: answer,
-        type: messageType.webrtc.answer,
+        type: messageSignalType.webrtc.answer,
       }),
     );
   }

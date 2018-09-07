@@ -32,10 +32,11 @@
     "node": "8.x || 10.x"
   },
   "dependencies": {
+    "@coset/common": "0.1.0",
     "@types/debug": "0.0.30",
     "@types/node": "10.9.4",
     "@types/uuid": "3.4.4",
-    "@types/ws": "6.0.0",
+    "@types/ws": "6.0.1",
     "debug": "3.1.0",
     "eventemitter3": "3.1.0",
     "uuid": "3.3.2",

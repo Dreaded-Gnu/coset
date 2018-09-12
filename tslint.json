@@ -12,6 +12,7 @@
     "no-unsafe-any": false,
     "completed-docs": true,
     "prettier": true,
+    "newline-per-chained-call": false,
     "naming-convention": [
       true,
       // forbid leading and trailing underscores and enforce camelCase on EVERY name. will be overridden by subtypes if needed

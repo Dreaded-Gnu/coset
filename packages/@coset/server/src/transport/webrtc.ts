@@ -25,7 +25,7 @@ export class TransportWebrtc {
   /**
    * Callback map
    */
-  private readonly callbackMap: Map<number, CallbackMapFunction[]>;
+  private readonly callbackMap: Map<number, Map<CallbackMapFunction, object>>;
 
   /**
    * Connected flag
@@ -297,7 +297,9 @@ export class TransportWebrtc {
 
     // Get bound callbacks
     this.debug("Retrieving bound callbacks to execute");
-    const callbackList: CallbackMapFunction[] = this.callbackMap.get(msgType);
+    const callbackList: Map<CallbackMapFunction, object> = this.callbackMap.get(
+      msgType,
+    );
 
     // Handle no callback
     if (typeof callbackList === "undefined") {
@@ -308,8 +310,12 @@ export class TransportWebrtc {
     // Iterate over callbacks and execute them
     this.debug("Executing callback list with data");
     callbackList.forEach(
-      (cb: CallbackMapFunction): void => {
-        cb(data);
+      (context: object, cb: CallbackMapFunction): void => {
+        if (typeof context !== "undefined") {
+          cb.call(context, data);
+        } else {
+          cb(data);
+        }
       },
     );
   }
@@ -335,8 +341,6 @@ export class TransportWebrtc {
 
   /**
    * Handle timeout
-   *
-   * @todo add timeout handling
    */
   private HandleTimeout(): void {
     // Reset connected flag
@@ -410,6 +414,7 @@ export class TransportWebrtc {
     callback: CallbackMapFunction,
     remove: boolean = false,
     internal: boolean = false,
+    context?: object,
   ): void {
     this.debug("%s handler for type %d", remove ? "Unbind" : "Bind", type);
     // Handle invalid data
@@ -432,18 +437,20 @@ export class TransportWebrtc {
 
     // Setup callbacks to insert
     this.debug("Get existing bound callbacks");
-    let callbackList: CallbackMapFunction[] = this.callbackMap.get(type);
+    let callbackList: Map<CallbackMapFunction, object> = this.callbackMap.get(
+      type,
+    );
 
     // Initialize if not existing
     if (typeof callbackList === "undefined") {
-      callbackList = [];
+      callbackList = new Map();
     }
 
     // Get callback index
-    const currentCallbackIndex: number = callbackList.indexOf(callback);
+    const callbackBound: boolean = callbackList.has(callback);
 
     // Check for existance before removal
-    if (remove && currentCallbackIndex !== -1) {
+    if (remove && !callbackBound) {
       this.debug("Try to remove not bound handler");
 
       return;
@@ -451,24 +458,21 @@ export class TransportWebrtc {
 
     // Handle remove
     if (remove) {
-      this.debug("Removing debug handler at %d", currentCallbackIndex);
-      callbackList.splice(currentCallbackIndex, 1);
+      this.debug("Removing debug handler at %o", callback);
+      callbackList.delete(callback);
 
       return;
     }
 
     // Handle already added
-    if (currentCallbackIndex !== -1) {
-      this.debug(
-        "Callback for type %d already registered",
-        currentCallbackIndex,
-      );
+    if (callbackBound) {
+      this.debug("Callback for type %o already registered", callback);
       throw new Error(`Callback for message type ${type} already registered!`);
     }
 
     // Push callback and overwrite map entry
     this.debug("Push back callback");
-    callbackList.push(callback);
+    callbackList.set(callback, context);
     this.callbackMap.set(type, callbackList);
   }
 

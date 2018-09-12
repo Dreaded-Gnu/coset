@@ -89,9 +89,10 @@ export class Transport extends EventEmitter {
     type: number,
     callback: (data: object) => void,
     remove: boolean = false,
+    context?: object,
   ): void {
     this.debug("%s handler to type %d", remove ? "Unbind" : "Bind", type);
-    this.emit("socket::handler", type, callback, remove);
+    this.emit("socket::handler", type, callback, remove, false, context);
   }
 
   /**

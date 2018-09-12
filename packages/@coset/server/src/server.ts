@@ -148,6 +148,6 @@ export class Server extends EventEmitter {
    */
   private HandleSocketConnected(socket: Transport): void {
     this.debug("Connection %s established", socket.Id);
-    this.emit("connection", Transport);
+    this.emit("connection", socket);
   }
 }

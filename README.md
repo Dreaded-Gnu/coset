@@ -71,13 +71,13 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Support (de-)serialization of data
     - [ ] Implement encoding of data before send, when scheme is set.
     - [ ] Implement decoding of data after receive, when scheme is set.
-    - [ ] Consider following scheme types signed and unsigned
-      - [ ] `Byte`: 1 byte
-      - [ ] `ShortInt`: 2 byte
-      - [ ] `Int`: 4 bytes
-      - [ ] `Float`: 4 bytes
-      - [ ] `Double`: 8 bytes
-      - [ ] `String`: variable length until `\0`.
+    - [x] Consider following scheme types signed and unsigned
+      - [x] `Byte`: 1 byte
+      - [x] `ShortInt`: 2 byte
+      - [x] `Int`: 4 bytes
+      - [x] `Float`: 4 bytes
+      - [x] `Double`: 8 bytes
+      - [x] `String`: variable length until `\0`.
   - [ ] Throw errors, when trying to send/receive a message type without encode/decode handler
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc

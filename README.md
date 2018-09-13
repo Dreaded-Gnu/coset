@@ -32,9 +32,9 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Use event bus for connecting websocket and webrtc transport layer instead of passing them around
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
-  - [ ] Add disconnect of both transports when one or both disconnected or emitted an error ( currently rtc peer connection is going to be opened again after closing it )
-  - [ ] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe.
-  - [ ] Test heartbeat with disconnect on timeout
+  - [ ] Add disconnect of both transports when one or both disconnected or emitted an error
+  - [x] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe.
+  - [x] Test heartbeat with disconnect on timeout
   - [x] Find better place for SocketClose callback within webrtc
 - [x] Add verbose output activated, when setting specific environment variable by using `debug`
 - [ ] Encoding/Decoding of packages with registering serialization schemes and handler
@@ -53,7 +53,6 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
         b: Type.Int,
         c: Type.Short,
         d: Type.Float,
-        e: Type.String,
       }
     );
 
@@ -69,15 +68,16 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
     ```
 
   - [ ] Support (de-)serialization of data
-    - [ ] Implement encoding of data before send, when scheme is set.
+    - [x] Implement encoding of data before send, when scheme is set.
     - [ ] Implement decoding of data after receive, when scheme is set.
     - [x] Consider following scheme types signed and unsigned
       - [x] `Byte`: 1 byte
       - [x] `ShortInt`: 2 byte
+      - [x] `UShortInt`: 2 byte
       - [x] `Int`: 4 bytes
+      - [x] `UInt`: 4 bytes
       - [x] `Float`: 4 bytes
       - [x] `Double`: 8 bytes
-      - [x] `String`: variable length until `\0`.
   - [ ] Throw errors, when trying to send/receive a message type without encode/decode handler
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc

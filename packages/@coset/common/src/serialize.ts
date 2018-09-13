@@ -4,6 +4,7 @@ import * as Debug from "debug";
 // Local dependencies
 import { constant } from "./constant";
 import { Size } from "./size";
+import { Type } from "./type";
 
 /**
  * Internal helper to determine expected object byte length by serialization object
@@ -30,16 +31,122 @@ const expectedObjectByteLength: (serialize: object) => number = (
       continue;
     }
 
-    // Skip strings due to no fix size
-    if (serialize[key] === Size.String) {
-      continue;
-    }
+    // Determine byte length by type
+    switch (serialize[key]) {
+      case Type.Byte:
+        byteLength += Size.Byte;
+        break;
 
-    // Normal byte amount
-    byteLength += parseInt(serialize[key], 10);
+      case Type.ShortInt:
+        byteLength += Size.ShortInt;
+        break;
+
+      case Type.UShortInt:
+        byteLength += Size.UShortInt;
+        break;
+
+      case Type.Int:
+        byteLength += Size.Int;
+        break;
+
+      case Type.UInt:
+        byteLength += Size.UInt;
+        break;
+
+      case Type.Float:
+        byteLength += Size.Float;
+        break;
+
+      case Type.Double:
+        byteLength += Size.Double;
+        break;
+
+      default:
+        throw new Error("Invalid size!");
+    }
   }
 
   return byteLength;
+};
+
+/**
+ * Method to convert object to buffer
+ *
+ * @param view view to be extended
+ * @param serialize serialize object
+ * @param data data object
+ * @param offset byte offset
+ */
+const toBufferRecursive: (
+  view: DataView,
+  serialize: object,
+  data: object,
+  offset: number,
+) => DataView = (
+  view: DataView,
+  serialize: object,
+  data: object,
+  offset: number,
+): DataView => {
+  let tmpView: DataView = view;
+  let tmpOffset: number = offset;
+
+  // Loop recursively through object
+  for (const key in serialize) {
+    // Skip invalid
+    if (!serialize.hasOwnProperty(key)) {
+      continue;
+    }
+
+    // Handle object in object
+    if (typeof serialize[key] !== "number") {
+      tmpView = toBufferRecursive(view, serialize[key], data[key], tmpOffset);
+      tmpOffset += expectedObjectByteLength(serialize[key]);
+      continue;
+    }
+
+    switch (serialize[key]) {
+      case Type.Byte:
+        tmpView.setUint8(tmpOffset, data[key]);
+        tmpOffset += Size.Byte;
+        break;
+
+      case Type.ShortInt:
+        tmpView.setInt16(tmpOffset, data[key]);
+        tmpOffset += Size.ShortInt;
+        break;
+
+      case Type.UShortInt:
+        tmpView.setUint16(tmpOffset, data[key]);
+        tmpOffset += Size.UShortInt;
+        break;
+
+      case Type.Int:
+        tmpView.setInt32(tmpOffset, data[key]);
+        tmpOffset += Size.Int;
+        break;
+
+      case Type.UInt:
+        tmpView.setUint32(tmpOffset, data[key]);
+        tmpOffset += Size.UInt;
+        break;
+
+      case Type.Float:
+        tmpView.setFloat32(tmpOffset, data[key]);
+        tmpOffset += Size.Float;
+        break;
+
+      case Type.Double:
+        tmpView.setFloat64(tmpOffset, data[key]);
+        tmpOffset += Size.Double;
+        break;
+
+      default:
+        throw new Error("Invalid size for serialization");
+    }
+  }
+
+  return tmpView;
 };
 
 /**
@@ -67,9 +174,31 @@ export class Serialize {
    * @param data data object to parse to array buffer
    */
   public ToBuffer(strategy: object, data: object): ArrayBuffer {
+    // Skip if no strategy is set
+    if (typeof strategy === "undefined") {
+      return new ArrayBuffer(Size.Empty);
+    }
+
+    // Handle strategy without data
+    if (typeof strategy !== "undefined" && typeof data === "undefined") {
+      throw new Error("No data given for ToBuffer");
+    }
+
+    // Debug output
     this.debug("ToBuffer(%o, %o) called", strategy, data);
 
-    return new ArrayBuffer(Size.Empty);
+    // Object length
+    const len: number = expectedObjectByteLength(strategy);
+
+    // Generate array buffer
+    const buffer: ArrayBuffer = new ArrayBuffer(len);
+    let view: DataView = new DataView(buffer);
+
+    // Transfer to buffer recursive
+    view = toBufferRecursive(view, strategy, data, 0);
+
+    // Return buffer filled via view
+    return view.buffer;
   }
 
   /**

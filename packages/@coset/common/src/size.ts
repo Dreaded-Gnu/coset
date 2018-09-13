@@ -41,9 +41,4 @@ export enum Size {
    * Double data type size
    */
   Double = 8,
-
-  /**
-   * String has a size of 0 due to variable length of strings
-   */
-  String = -1,
 }

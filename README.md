@@ -79,7 +79,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
       - [x] `UInt`: 4 bytes
       - [x] `Float`: 4 bytes
       - [x] `Double`: 8 bytes
-  - [ ] Throw errors, when trying to send/receive a message type without encode/decode handler
+  - [ ] Catch errors that may occur, during send/receive and emit errors
   - [ ] Test send/receive of messages with and without data
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc

@@ -281,6 +281,11 @@ export class Serialize {
    * @param data data object to parse to array buffer
    */
   public ToBuffer(strategy: object, data: object): ArrayBuffer {
+    // Throw error when no strategy is set but data
+    if (typeof strategy === "undefined" && typeof data !== "undefined") {
+      throw new Error("No strategy passed for data!");
+    }
+
     // Skip if no strategy is set
     if (typeof strategy === "undefined") {
       return new ArrayBuffer(Size.Empty);
@@ -316,6 +321,11 @@ export class Serialize {
    */
   public ToObject(strategy: object, buffer: ArrayBuffer): object {
     const obj: object = {};
+
+    // Throw error when no strategy is set but buffer
+    if (typeof strategy === "undefined" && typeof buffer !== "undefined") {
+      throw new Error("No strategy passed for buffer!");
+    }
 
     // Skip if no strategy is set
     if (typeof strategy === "undefined") {

@@ -8,32 +8,37 @@ export enum Type {
   Byte = 1,
 
   /**
+   * Unsigned byte data type
+   */
+  UByte = 2,
+
+  /**
    * Signed short int data type
    */
-  ShortInt = 2,
+  ShortInt = 3,
 
   /**
    * Unsigned short int data type
    */
-  UShortInt = 3,
+  UShortInt = 4,
 
   /**
    * Signed int data type
    */
-  Int = 4,
+  Int = 5,
 
   /**
    * Unsigned int data type
    */
-  UInt = 5,
+  UInt = 6,
 
   /**
    * Float data type
    */
-  Float = 6,
+  Float = 7,
 
   /**
    * Double data type
    */
-  Double = 7,
+  Double = 8,
 }

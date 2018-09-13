@@ -6,13 +6,15 @@ import { Type } from "../../../src/type";
 
 test("Flat object to buffer", () => {
   const srz: Serialize = new Serialize();
-  const checkBuffer: ArrayBuffer = new ArrayBuffer(25);
+  const checkBuffer: ArrayBuffer = new ArrayBuffer(26);
   const checkView: DataView = new DataView(checkBuffer);
   let offset: number = Size.Empty;
 
   // Build check view
   checkView.setInt8(offset, 1);
   offset += Size.Byte;
+  checkView.setUint8(offset, 1);
+  offset += Size.UByte;
   checkView.setInt16(offset, 2);
   offset += Size.ShortInt;
   checkView.setUint16(offset, 3);
@@ -29,21 +31,23 @@ test("Flat object to buffer", () => {
   const buff: ArrayBuffer = srz.ToBuffer(
     {
       a: Type.Byte,
-      b: Type.ShortInt,
-      c: Type.UShortInt,
-      d: Type.Int,
-      e: Type.UInt,
-      f: Type.Float,
-      g: Type.Double,
+      b: Type.UByte,
+      c: Type.ShortInt,
+      d: Type.UShortInt,
+      e: Type.Int,
+      f: Type.UInt,
+      g: Type.Float,
+      h: Type.Double,
     },
     {
       a: 1,
-      b: 2,
-      c: 3,
-      d: 4,
-      e: 5,
-      f: 6,
-      g: 7,
+      b: 1,
+      c: 2,
+      d: 3,
+      e: 4,
+      f: 5,
+      g: 6,
+      h: 7,
     },
   );
 

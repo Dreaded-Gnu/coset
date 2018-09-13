@@ -13,6 +13,11 @@ export enum Size {
   Byte = 1,
 
   /**
+   * Unsigned byte data type size
+   */
+  UByte = 1,
+
+  /**
    * Signed short int data type size
    */
   ShortInt = 2,

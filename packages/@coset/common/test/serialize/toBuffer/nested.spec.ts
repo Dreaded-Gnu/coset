@@ -6,13 +6,15 @@ import { Type } from "../../../src/type";
 
 test("Nested object to buffer", () => {
   const srz: Serialize = new Serialize();
-  const checkBuffer: ArrayBuffer = new ArrayBuffer(25);
+  const checkBuffer: ArrayBuffer = new ArrayBuffer(26);
   const checkView: DataView = new DataView(checkBuffer);
   let offset: number = Size.Empty;
 
   // Build check view
   checkView.setInt8(offset, 1);
   offset += Size.Byte;
+  checkView.setUint8(offset, 1);
+  offset += Size.UByte;
   checkView.setInt16(offset, 2);
   offset += Size.ShortInt;
   checkView.setUint16(offset, 3);
@@ -29,25 +31,27 @@ test("Nested object to buffer", () => {
   const buff: ArrayBuffer = srz.ToBuffer(
     {
       a: Type.Byte,
-      b: {
-        ba: Type.ShortInt,
-        bb: Type.UShortInt,
+      b: Type.UByte,
+      c: {
+        ca: Type.ShortInt,
+        cb: Type.UShortInt,
       },
-      c: Type.Int,
-      d: Type.UInt,
-      e: Type.Float,
-      f: Type.Double,
+      d: Type.Int,
+      e: Type.UInt,
+      f: Type.Float,
+      g: Type.Double,
     },
     {
       a: 1,
-      b: {
-        ba: 2,
-        bb: 3,
+      b: 1,
+      c: {
+        ca: 2,
+        cb: 3,
       },
-      c: 4,
-      d: 5,
-      e: 6,
-      f: 7,
+      d: 4,
+      e: 5,
+      f: 6,
+      g: 7,
     },
   );
 

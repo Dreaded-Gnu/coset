@@ -37,6 +37,10 @@ const expectedObjectByteLength: (serialize: object) => number = (
         byteLength += Size.Byte;
         break;
 
+      case Type.UByte:
+        byteLength += Size.UByte;
+        break;
+
       case Type.ShortInt:
         byteLength += Size.ShortInt;
         break;
@@ -107,6 +111,11 @@ const toBufferRecursive: (
 
     switch (serialize[key]) {
       case Type.Byte:
+        tmpView.setInt8(tmpOffset, data[key]);
+        tmpOffset += Size.Byte;
+        break;
+
+      case Type.UByte:
         tmpView.setUint8(tmpOffset, data[key]);
         tmpOffset += Size.Byte;
         break;
@@ -147,6 +156,104 @@ const toBufferRecursive: (
   }
 
   return tmpView;
+};
+
+/**
+ * Method to convert buffer to object
+ *
+ * @param obj object
+ * @param serialize serialization strategy
+ * @param buffer array buffer
+ * @param offset byte offset
+ */
+const toObjectRecursive: (
+  obj: object,
+  serialize: object,
+  buffer: ArrayBuffer,
+  offset: number,
+) => object = (
+  obj: object,
+  serialize: object,
+  buffer: ArrayBuffer,
+  offset: number,
+): object => {
+  const tmpView: DataView = new DataView(buffer, offset);
+  let tmpOffset: number = Size.Empty;
+  const tmpObj: object = obj;
+
+  // Loop recursively through object
+  for (const key in serialize) {
+    // Skip invalid
+    if (!serialize.hasOwnProperty(key)) {
+      continue;
+    }
+
+    // Handle object in object
+    if (typeof serialize[key] !== "number") {
+      // Initialize nested object
+      tmpObj[key] = {};
+
+      // Call recursive
+      tmpObj[key] = toObjectRecursive(
+        tmpObj[key],
+        serialize[key],
+        buffer,
+        tmpOffset,
+      );
+
+      // Increment offset and skip rest
+      tmpOffset += expectedObjectByteLength(serialize[key]);
+      continue;
+    }
+
+    // Set correct type at object
+    switch (serialize[key]) {
+      case Type.Byte:
+        tmpObj[key] = tmpView.getInt8(tmpOffset);
+        tmpOffset += Size.Byte;
+        break;
+
+      case Type.UByte:
+        tmpObj[key] = tmpView.getUint8(tmpOffset);
+        tmpOffset += Size.Byte;
+        break;
+
+      case Type.ShortInt:
+        tmpObj[key] = tmpView.getInt16(tmpOffset);
+        tmpOffset += Size.ShortInt;
+        break;
+
+      case Type.UShortInt:
+        tmpObj[key] = tmpView.getUint16(tmpOffset);
+        tmpOffset += Size.UShortInt;
+        break;
+
+      case Type.Int:
+        tmpObj[key] = tmpView.getInt32(tmpOffset);
+        tmpOffset += Size.Int;
+        break;
+
+      case Type.UInt:
+        tmpObj[key] = tmpView.getUint32(tmpOffset);
+        tmpOffset += Size.UInt;
+        break;
+
+      case Type.Float:
+        tmpObj[key] = tmpView.getFloat32(tmpOffset);
+        tmpOffset += Size.Float;
+        break;
+
+      case Type.Double:
+        tmpObj[key] = tmpView.getFloat64(tmpOffset);
+        tmpOffset += Size.Double;
+        break;
+
+      default:
+        throw new Error("Invalid size for serialization");
+    }
+  }
+
+  return tmpObj;
 };
 
 /**
@@ -208,8 +315,29 @@ export class Serialize {
    * @param buffer data array buffer
    */
   public ToObject(strategy: object, buffer: ArrayBuffer): object {
+    const obj: object = {};
+
+    // Skip if no strategy is set
+    if (typeof strategy === "undefined") {
+      return obj;
+    }
+
+    // Handle strategy without data
+    if (typeof strategy !== "undefined" && typeof buffer === "undefined") {
+      throw new Error("No buffer given for ToObject");
+    }
+
+    // Debug output
     this.debug("Parse(%o, %o) called", strategy, buffer);
 
-    return {};
+    // Object length
+    const len: number = expectedObjectByteLength(strategy);
+
+    // Check length
+    if (len !== buffer.byteLength) {
+      throw new Error("Invalid buffer length");
+    }
+
+    return toObjectRecursive(obj, strategy, buffer, 0);
   }
 }

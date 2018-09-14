@@ -32,12 +32,12 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Use event bus for connecting websocket and webrtc transport layer instead of passing them around
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to WebSocket transport layer
   - [x] Check and add ping ( `server` -> `client` -> `server` ) to RtcDataChannel transport layer
-  - [ ] Add disconnect of both transports when one or both disconnected or emitted an error
+  - [x] Add disconnect of both transports when one or both disconnected or emitted an error
   - [x] Add disconnect with emit of disconnect event when ping doesn't receive an answer within set timeframe.
   - [x] Test heartbeat with disconnect on timeout
   - [x] Find better place for SocketClose callback within webrtc
 - [x] Add verbose output activated, when setting specific environment variable by using `debug`
-- [ ] Encoding/Decoding of packages with registering serialization schemes and handler
+- [x] Encoding/Decoding of packages with registering serialization schemes and handler
   - [x] Change data transfer for rtc to binary by using `arraybuffer`
   - [x] Add attach of listener for packet type with included message structure ( first parameter type, second callback, 3rd message structure ) used for send and receive
 
@@ -79,8 +79,8 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
       - [x] `UInt`: 4 bytes
       - [x] `Float`: 4 bytes
       - [x] `Double`: 8 bytes
-  - [ ] Catch errors that may occur, during send/receive and emit errors
-  - [ ] Test send/receive of messages with and without data
+  - [x] Catch errors that may occur, during send/receive and emit errors
+  - [x] Test send/receive of messages with and without data
 - [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc
   - [ ] Support packet fragmentation

@@ -259,8 +259,6 @@ export class TransportWebrtc {
   /**
    * Handle datachannel error
    *
-   * @todo add error handling
-   *
    * @param event error event
    */
   private HandleError(event: Event): void {
@@ -270,10 +268,6 @@ export class TransportWebrtc {
 
   /**
    * Handle data channel message
-   *
-   * @todo add message parsing
-   * @todo add error handling
-   * @todo switch to DataView instead of typed array
    *
    * @param event message event
    */
@@ -293,7 +287,17 @@ export class TransportWebrtc {
     const serialize: object = this.serializeMap.get(msgType);
 
     // Transform data to object
-    const data: object = this.serialize.ToObject(serialize, dataView.buffer);
+    let data: object;
+
+    // Try to decode
+    try {
+      data = this.serialize.ToObject(serialize, dataView.buffer);
+    } catch (e) {
+      this.debug(`Unable to serialize data for type ${msgType}`);
+      this.HandleError(new Event("HandleMessage::Serialize"));
+
+      return;
+    }
 
     // Get bound callbacks
     this.debug("Retrieving bound callbacks to execute");
@@ -303,8 +307,9 @@ export class TransportWebrtc {
 
     // Handle no callback
     if (typeof callbackList === "undefined") {
-      this.debug("No callback found for message type");
-      throw new Error(`No callback bound for type ${msgType}!`);
+      this.debug(`No callback found for message type ${msgType}`);
+
+      return;
     }
 
     // Iterate over callbacks and execute them
@@ -346,9 +351,7 @@ export class TransportWebrtc {
     // Reset connected flag
     this.debug("Connection timed out");
     this.connected = false;
-
-    // Close peer connection
-    this.peerConnection.close();
+    this.eventBus.emit("socket::error", new Event("HandleTimeout"));
   }
 
   /**
@@ -537,17 +540,19 @@ export class TransportWebrtc {
     this.debug("Gather serialization strategy");
     const serialize: object = this.serializeMap.get(type);
 
-    // Handle passed data but no serialize object
-    if (typeof serialize === "undefined" && typeof data !== "undefined") {
-      this.debug("Error missing data for type %d", type);
-      throw new Error(`No serialization for message type ${type} existing`);
-    }
-
     // Initialize DateView
     this.debug("Generating data view");
-    const dataView: DataView = new DataView(
-      this.serialize.ToBuffer(serialize, data),
-    );
+    let dataView: DataView;
+
+    // Try to decode
+    try {
+      dataView = new DataView(this.serialize.ToBuffer(serialize, data));
+    } catch (e) {
+      this.debug(`Unable to serialize data for type ${type}`);
+      this.HandleError(new Event("Send::Serialize"));
+
+      return;
+    }
 
     // Generate view for final packet
     this.debug("Generating view for merging data view and message type");

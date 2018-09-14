@@ -179,9 +179,8 @@ export class TransportSocket {
     clearTimeout(this.connectTimeout);
     clearTimeout(this.pingTimeout);
 
-    // Close socket
-    this.debug("Terminating socket");
-    this.socket.terminate();
+    // Emit error
+    this.eventBus.emit("signal::error", new Event("HandleTimeout"));
   }
 
   /**

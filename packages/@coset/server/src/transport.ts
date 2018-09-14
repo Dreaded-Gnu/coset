@@ -67,7 +67,9 @@ export class Transport extends EventEmitter {
     this.eventBus
       .on("socket::connection", this.HandleOpen.bind(this))
       .on("socket::close", this.SocketClose.bind(this))
-      .on(`signal::${messageSignalType.close}`, this.SignalClose.bind(this));
+      .on("socket::error", this.SocketError.bind(this))
+      .on(`signal::${messageSignalType.close}`, this.SignalClose.bind(this))
+      .on("signal::error", this.SignalError.bind(this));
   }
 
   /**
@@ -129,10 +131,31 @@ export class Transport extends EventEmitter {
   }
 
   /**
+   * Signal error handler
+   * @param event error event
+   */
+  private SignalError(event: Event): void {
+    this.debug("SignalError triggered");
+    this.socket.Close();
+    this.SocketError(event);
+  }
+
+  /**
    * Callback for rtc close
    */
   private SocketClose(): void {
     this.debug("SocketClose triggered!");
     this.socket.Close();
+  }
+
+  /**
+   * Socket error handler
+   *
+   * @param event error event
+   */
+  private SocketError(event: Event): void {
+    this.debug("SocketError triggered");
+    this.webrtc.Close();
+    this.emit("error", event);
   }
 }

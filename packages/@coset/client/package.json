@@ -1,0 +1,45 @@
+{
+  "name": "@coset/client",
+  "version": "0.1.0",
+  "description": "communication socket via websocket and webrtc datachannel - client",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "lint": "tslint --project tsconfig.json --config ../../../tslint.json",
+    "prebuild": "rimraf ./lib",
+    "build": "tsc --project tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dreaded-Gnu/coset.git"
+  },
+  "keywords": [
+    "RTCDataChannel",
+    "Websocket",
+    "HTML5",
+    "TypeScript",
+    "JavaScript"
+  ],
+  "author": "Christian Freitag <cfreitag.cf@googlemail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Dreaded-Gnu/coset/issues"
+  },
+  "homepage": "https://github.com/Dreaded-Gnu/coset#readme",
+  "readme": "README.md",
+  "engines": {
+    "node": "8.x || 10.x"
+  },
+  "dependencies": {
+    "@coset/common": "0.1.0",
+    "@types/debug": "0.0.30",
+    "@types/node": "10.9.4",
+    "@types/uuid": "3.4.4",
+    "@types/ws": "6.0.1",
+    "debug": "4.0.1",
+    "eventemitter3": "3.1.0",
+    "uuid": "3.3.2",
+    "wrtc": "0.2.0",
+    "ws": "6.0.0"
+  }
+}

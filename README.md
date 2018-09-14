@@ -24,7 +24,7 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
 
 ## ToDo
 
-- [ ] Add heartbeat to server with disconnect on no in-time answer
+- [x] Add heartbeat to server with disconnect on no in-time answer
   - [x] Extend server config by attribute `server` restricted to https server
   - [x] Extend server config by ping timeout attribute as number with default of 10 seconds
   - [x] Remove not yet used config options from server config interface
@@ -108,3 +108,6 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
 - [x] Add content within contributing markdown
 - [x] Add github issue and pull request templates
 - [ ] Publish to npm
+- [ ] Manage signal and webrtc transport a bit less nasty
+- [ ] Add reconnection strategy
+- [ ] Add pub sub pattern with rooms/namespaces

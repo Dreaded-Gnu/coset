@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@types/debug": "0.0.30",
-    "@types/node": "10.9.4",
+    "@types/node": "10.11.0",
     "debug": "4.0.1"
   }
 }

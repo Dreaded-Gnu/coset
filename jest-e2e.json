@@ -11,7 +11,7 @@
   },
   "globals": {
     "ts-jest": {
-      "tsConfigFile": "../tsconfig.e2e.json"
+      "tsConfig": "../tsconfig.e2e.json"
     }
   }
 }

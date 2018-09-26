@@ -33,13 +33,13 @@
   "dependencies": {
     "@coset/common": "0.1.0",
     "@types/debug": "0.0.30",
-    "@types/node": "10.9.4",
+    "@types/node": "10.11.0",
     "@types/uuid": "3.4.4",
     "@types/ws": "6.0.1",
     "debug": "4.0.1",
     "eventemitter3": "3.1.0",
     "uuid": "3.3.2",
-    "wrtc": "0.2.0",
+    "wrtc": "0.2.1",
     "ws": "6.0.0"
   }
 }

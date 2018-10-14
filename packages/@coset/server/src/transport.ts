@@ -85,13 +85,14 @@ export class Transport extends EventEmitter {
    * Method to bind handler for specific message type
    * @param type message type to use
    * @param callback callback to be executed with parsed data
+   * @param context object used for binding, during execution
    * @param remove set to true for handler removal
    */
   public Handler(
     type: number,
     callback: (data: object) => void,
-    remove: boolean = false,
     context?: object,
+    remove: boolean = false,
   ): void {
     this.debug("%s handler to type %d", remove ? "Unbind" : "Bind", type);
     this.emit("socket::handler", type, callback, remove, false, context);

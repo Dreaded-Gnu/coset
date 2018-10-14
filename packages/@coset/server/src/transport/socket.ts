@@ -23,7 +23,7 @@ export class TransportSocket {
   /**
    * Connection timeout
    */
-  private connectTimeout: number;
+  private connectTimeout: NodeJS.Timer;
 
   /**
    * Debugging instance
@@ -44,7 +44,7 @@ export class TransportSocket {
   /**
    * Ping timeout
    */
-  private pingTimeout: number;
+  private pingTimeout: NodeJS.Timer;
 
   /**
    * Websocket instance

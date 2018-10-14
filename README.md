@@ -81,14 +81,16 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
       - [x] `Double`: 8 bytes
   - [x] Catch errors that may occur, during send/receive and emit errors
   - [x] Test send/receive of messages with and without data
-- [ ] Add message queue for enqueing messages before sending it and to not overload datachannel
+- [x] Add message queue for enqueing messages before sending it and to not overload datachannel
 - [ ] Implement kind of protocol on top of rtc
   - [ ] Support packet fragmentation
   - [ ] Support message chunking
   - [ ] Support reliable-ordered messages
-- [ ] Add client library and move common parts from server to common library
+- [ ] Add client library
+  - [x] Create bare client package
+  - [ ] Move client and server used parts from server to common package
 - [ ] Add unit testing at server and client
-- [ ] Add browser based end to end tests
+- [ ] Add end to end tests using node server and browser
 - [ ] Add ci test suite for executing unit tests and browser based tests
   - [ ] OS X
   - [ ] Linux
@@ -101,13 +103,15 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [x] Add and include prettier to tslint for typescript examples
 - [ ] Create documentation
   - [ ] Create wiki documentation about how to use library
-  - [ ] Create example projects
+  - [ ] Create javascript example
+  - [ ] Create typescript example
 - [x] Add automatic documentation generation
 - [x] Add automatic changelog generation
 - [x] Add code of conduct file
 - [x] Add content within contributing markdown
 - [x] Add github issue and pull request templates
 - [ ] Publish to npm
-- [ ] Manage signal and webrtc transport a bit less nasty
-- [ ] Add reconnection strategy
-- [ ] Add pub sub pattern with rooms/namespaces
+- [ ] Further ehancements after first release
+  - [ ] Manage signal and webrtc transport a bit less nasty
+  - [ ] Add reconnection strategy
+  - [ ] Add pub sub pattern with rooms/namespaces

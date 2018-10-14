@@ -32,8 +32,8 @@
     "node": "8.x || 10.x"
   },
   "dependencies": {
-    "@types/debug": "0.0.30",
-    "@types/node": "10.11.0",
-    "debug": "4.0.1"
+    "@types/debug": "0.0.31",
+    "@types/node": "10.11.7",
+    "debug": "4.1.0"
   }
 }

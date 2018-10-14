@@ -4,7 +4,7 @@ import * as EventEmitter from "eventemitter3";
 import * as wrtc from "wrtc";
 
 // Internal dependencies
-import { Serialize, Size } from "@coset/common";
+import { Queue, Serialize, Size } from "@coset/common";
 
 // Import local dependencies
 import { constant } from "./../constant";
@@ -12,6 +12,11 @@ import { IMessageSignalStructure } from "./../message/signal/istructure";
 import { messageSignalType } from "./../message/signal/type";
 import { MessageSocketType } from "./../message/socket/type";
 import { IServerConfig } from "./../server/iconfig";
+
+interface IQueuedPackage {
+  data?: object;
+  type: number;
+}
 
 /**
  * Callback map function type
@@ -22,6 +27,45 @@ type CallbackMapFunction = (data?: object) => void;
  * WebRTC DataChannel transport wrapper
  */
 export class TransportWebrtc {
+  /**
+   * Data channel added event handler binding
+   */
+  private readonly boundDataChannelAdded: (
+    event: wrtc.RTCDataChannelEvent,
+  ) => void;
+
+  /**
+   * Datachannel buffered amount low event handler binding
+   */
+  private readonly boundHandleBufferedAmountLow: () => void;
+
+  /**
+   * Datachannel close event handler binding
+   */
+  private boundHandleClose: (event: Event) => void;
+
+  /**
+   * Datachannel error event handler binding
+   */
+  private readonly boundHandleError: (event: Event) => void;
+
+  /**
+   * Datachannel message event handler binding
+   */
+  private readonly boundHandleMessage: (event: MessageEvent) => void;
+
+  /**
+   * boundHandleOpen open event handler binding
+   */
+  private readonly boundHandleOpen: (event: MessageEvent) => void;
+
+  /**
+   * Ice candidate event handler binding
+   */
+  private readonly boundIceCandidate: (
+    event: wrtc.RTCPeerConnectionIceEvent,
+  ) => void;
+
   /**
    * Callback map
    */
@@ -48,6 +92,11 @@ export class TransportWebrtc {
   private readonly eventBus: EventEmitter;
 
   /**
+   * Message queue
+   */
+  private readonly messageQueue: Queue<IQueuedPackage>;
+
+  /**
    * Server config
    */
   private readonly option: IServerConfig;
@@ -60,7 +109,7 @@ export class TransportWebrtc {
   /**
    * Ping timeout
    */
-  private pingTimeout: number;
+  private pingTimeout: NodeJS.Timer;
 
   /**
    * Array of reserved message types
@@ -89,6 +138,16 @@ export class TransportWebrtc {
     this.eventBus = eventBus;
     this.debug = Debug(`${constant.packageName}:webrtc`);
     this.serialize = new Serialize();
+    this.messageQueue = new Queue<IQueuedPackage>();
+
+    // Create bindings
+    this.debug("Create function bindings");
+    this.boundDataChannelAdded = this.DatachannelAdded.bind(this);
+    this.boundHandleBufferedAmountLow = this.HandleBufferedAmountLow.bind(this);
+    this.boundHandleError = this.HandleError.bind(this);
+    this.boundHandleMessage = this.HandleMessage.bind(this);
+    this.boundHandleOpen = this.HandleOpen.bind(this);
+    this.boundIceCandidate = this.IceCandidate.bind(this);
 
     // Setup necessary event handler
     this.debug("Setup event handler!");
@@ -143,14 +202,14 @@ export class TransportWebrtc {
       this.debug("Bind datachannel ready handler!");
       this.peerConnection.addEventListener(
         "datachannel",
-        this.DatachannelAdded.bind(this),
+        this.boundDataChannelAdded,
       );
 
       // Bind ice candidate listener
       this.debug("Bind ice candidate handler!");
       this.peerConnection.addEventListener(
         "icecandidate",
-        this.IceCandidate.bind(this),
+        this.boundIceCandidate,
       );
     } catch (e) {
       this.debug("WebRTC not supported!");
@@ -172,7 +231,7 @@ export class TransportWebrtc {
     this.debug("Remove datachannel event listener");
     this.peerConnection.removeEventListener(
       "datachannel",
-      this.DatachannelAdded.bind(this),
+      this.boundDataChannelAdded,
     );
 
     // Close connection
@@ -201,15 +260,20 @@ export class TransportWebrtc {
     this.debug("Set data channel binary type to arraybuffer!");
     dataChannel.binaryType = "arraybuffer";
 
+    // Bind close handler
+    this.debug("Create close handler binding");
+    this.boundHandleClose = this.HandleClose.bind(this, dataChannel);
+
     // Add event handler
     this.debug("Add data channel event listener!");
+    dataChannel.addEventListener("close", this.boundHandleClose);
+    dataChannel.addEventListener("open", this.boundHandleOpen);
+    dataChannel.addEventListener("message", this.boundHandleMessage);
+    dataChannel.addEventListener("error", this.boundHandleError);
     dataChannel.addEventListener(
-      "close",
-      this.HandleClose.bind(this, dataChannel),
+      "bufferedamountlow",
+      this.boundHandleBufferedAmountLow,
     );
-    dataChannel.addEventListener("open", this.HandleOpen.bind(this));
-    dataChannel.addEventListener("message", this.HandleMessage.bind(this));
-    dataChannel.addEventListener("error", this.HandleError.bind(this));
   }
 
   /**
@@ -227,6 +291,92 @@ export class TransportWebrtc {
       this.option.pingTimeout,
     );
   }
+  /**
+   * Perform send message
+   *
+   * @param type message type to send necessary for binary transfer
+   * @param data optional data to send with registered structure
+   */
+  private DoSend(type: number, data?: object): void {
+    // Do nothing on connection
+    if (!this.connected) {
+      return;
+    }
+
+    // Debug output
+    this.debug("Send message with type %d and data %o", type, data);
+    const offset: number = Size.UInt;
+
+    // Get serialization information
+    this.debug("Gather serialization strategy");
+    const serialize: object = this.serializeMap.get(type);
+
+    // Initialize DateView
+    this.debug("Generating data view");
+    let dataView: DataView;
+
+    // Try to decode
+    try {
+      dataView = new DataView(this.serialize.ToBuffer(serialize, data));
+    } catch (e) {
+      this.debug(`Unable to serialize data for type ${type}`);
+      this.HandleError(new Event("Send::Serialize"));
+
+      return;
+    }
+
+    // Generate view for final packet
+    this.debug("Generating view for merging data view and message type");
+    const bufferView: DataView = new DataView(
+      new ArrayBuffer(offset + dataView.byteLength),
+    );
+
+    // Push message type
+    this.debug("Saving message type as undefined");
+    bufferView.setUint32(0, type);
+
+    // Transfer buffer byte by byte
+    this.debug("Merging data view into buffer view");
+    for (let i: number = offset; i < dataView.byteLength + offset; i++) {
+      bufferView.setInt8(i, dataView.getInt8(i - offset));
+    }
+
+    // Send package
+    this.debug("Transmit merged view buffer via rtc");
+    this.dataChannel.send(bufferView.buffer);
+  }
+
+  /**
+   * Method to handle buffered amount low to send from queue
+   */
+  private HandleBufferedAmountLow(): void {
+    // Check for connection
+    if (!this.connected) {
+      this.debug("No connection established");
+
+      return;
+    }
+
+    // Handle buffered amount
+    if (this.dataChannel.bufferedAmount > 0) {
+      this.debug("Something sent in the mean time");
+
+      return;
+    }
+
+    // Handle empty message queue
+    if (this.messageQueue.Count() <= 0) {
+      this.debug("Message queue empty");
+
+      return;
+    }
+
+    // Get package to send
+    const toSend: IQueuedPackage = this.messageQueue.Shift();
+
+    // Execute send
+    this.DoSend(toSend.type, toSend.data);
+  }
 
   /**
    * Datachannel close event
@@ -234,15 +384,24 @@ export class TransportWebrtc {
    * @param event event data
    */
   private HandleClose(channel: wrtc.RTCDataChannel, event: Event): void {
+    // Reset connection flag
     this.debug("Close data channel emitted!");
     this.connected = false;
 
     // Reset handler
     this.debug("Remove event listener!");
-    channel.removeEventListener("close", this.HandleClose.bind(this));
-    channel.removeEventListener("open", this.HandleOpen.bind(this));
-    channel.removeEventListener("message", this.HandleMessage.bind(this));
-    channel.removeEventListener("error", this.HandleError.bind(this));
+    channel.removeEventListener("close", this.boundHandleClose);
+    channel.removeEventListener("open", this.boundHandleOpen);
+    channel.removeEventListener("message", this.boundHandleMessage);
+    channel.removeEventListener("error", this.boundHandleError);
+    channel.removeEventListener(
+      "bufferedamountlow",
+      this.boundHandleBufferedAmountLow,
+    );
+
+    // Unset close binding
+    this.debug("Clear close binding");
+    this.boundHandleClose = undefined;
 
     // Clear timeouts
     this.debug("Clear ping timeout!");
@@ -527,52 +686,25 @@ export class TransportWebrtc {
    * @param data optional data to send with registered structure
    */
   private Send(type: number, data?: object): void {
+    // Push to message queue
+    if (!this.connected || this.dataChannel.bufferedAmount > 0) {
+      this.debug(
+        "Store message within queue due to no connection or no buffered amount",
+      );
+      this.messageQueue.Push({ type, data });
+
+      return;
+    }
+
     // Do nothing on connection
     if (!this.connected) {
-      return;
-    }
-
-    // Debug output
-    this.debug("Send message with type %d and data %o", type, data);
-    const offset: number = Size.UInt;
-
-    // Get serialization information
-    this.debug("Gather serialization strategy");
-    const serialize: object = this.serializeMap.get(type);
-
-    // Initialize DateView
-    this.debug("Generating data view");
-    let dataView: DataView;
-
-    // Try to decode
-    try {
-      dataView = new DataView(this.serialize.ToBuffer(serialize, data));
-    } catch (e) {
-      this.debug(`Unable to serialize data for type ${type}`);
-      this.HandleError(new Event("Send::Serialize"));
+      this.debug("No connection, skipping send");
 
       return;
     }
 
-    // Generate view for final packet
-    this.debug("Generating view for merging data view and message type");
-    const bufferView: DataView = new DataView(
-      new ArrayBuffer(offset + dataView.byteLength),
-    );
-
-    // Push message type
-    this.debug("Saving message type as undefined");
-    bufferView.setUint32(0, type);
-
-    // Transfer buffer byte by byte
-    this.debug("Merging data view into buffer view");
-    for (let i: number = offset; i < dataView.byteLength + offset; i++) {
-      bufferView.setInt8(i, dataView.getInt8(i - offset));
-    }
-
-    // Send package
-    this.debug("Transmit merged view buffer via rtc");
-    this.dataChannel.send(bufferView.buffer);
+    // Perform send
+    this.DoSend(type, data);
   }
 
   /**

@@ -74,8 +74,14 @@ const cosetServer = new coset.Server(httpsServer);
 
 // listen to new connections
 cosetServer.on("connection", client => {
-  client.on("message", () => {});
-  client.on("disconnect", () => {});
+  // register serialization strategy
+  client.Serialize(5, { floatNumber: 7, integerNumber: 4 });
+
+  // register handler for type
+  client.Handler(5, data => console.dir(data));
+
+  // disconnect handler
+  client.on("disconnect", () => console.log(client.Id() + " disconnected!"));
 });
 
 // listen to server

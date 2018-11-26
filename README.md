@@ -89,22 +89,11 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
 - [ ] Add client library
   - [x] Create bare client package
   - [ ] Move client and server used parts from server to common package
-- [ ] Add unit testing at server and client
-- [ ] Add end to end tests using node server and browser
-- [ ] Add ci test suite for executing unit tests and browser based tests
-  - [ ] OS X
-  - [ ] Linux
-  - [ ] Windows
-- [ ] Add ci test suite for windows based testing
-- [ ] Add greenkeeper dependency management
+- [ ] Move project to created organization
 - [x] Add prettier
   - [x] Include prettier within tslint for packages
   - [x] Add and include prettier to eslint for plain javascript examples
   - [x] Add and include prettier to tslint for typescript examples
-- [ ] Create documentation
-  - [ ] Create wiki documentation about how to use library
-  - [ ] Create javascript example
-  - [ ] Create typescript example
 - [x] Add automatic documentation generation
 - [x] Add automatic changelog generation
 - [x] Add code of conduct file
@@ -115,3 +104,19 @@ For WebRTC especially DataChannels an SSL encryption is enforced, so you're goin
   - [ ] Manage signal and webrtc transport a bit less nasty
   - [ ] Add reconnection strategy
   - [ ] Add pub sub pattern with rooms/namespaces
+- [ ] Ongoing enhancements before and during releases
+  - [ ] Documentation
+    - [ ] Create/Enhance documentation
+    - [ ] Create wiki documentation
+    - [ ] Create project website using github pages
+  - [ ] Examples
+    - [ ] Create javascript examples
+    - [ ] Create typescript examples
+  - [ ] Improve testing
+    - [ ] Add unit testing at server and client
+    - [ ] Add end to end tests using node server and browser
+    - [ ] Add ci test suite for executing unit tests and browser based tests
+      - [ ] OS X
+      - [ ] Linux
+      - [ ] Windows
+    - [ ] Add greenkeeper for dependency management (ci integration needed)

@@ -8,7 +8,7 @@
     "ms-vscode.theme-markdownkit",
     "DavidAnson.vscode-markdownlint",
     "eg2.vscode-npm-script",
-    "eg2.tslint",
+    "ms-vscode.vscode-typescript-tslint-plugin",
     "christian-kohler.npm-intellisense",
     "wayou.vscode-todo-highlight",
     "bierner.markdown-preview-github-styles",

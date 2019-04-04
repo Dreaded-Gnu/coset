@@ -1,10 +1,8 @@
-// Node dependencies
+// Dependencies
+import * as Debug from "debug";
 import { EventEmitter } from "events";
 import { IncomingMessage as HttpIncomingMessage } from "http";
 import { Server as HttpsServer } from "https";
-
-// Additional package dependencies
-import * as Debug from "debug";
 import * as NodeUuid from "uuid";
 import * as WebSocket from "ws";
 

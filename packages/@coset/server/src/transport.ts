@@ -5,11 +5,10 @@ import { default as WebSocket } from "ws";
 
 // Import local dependencies
 import { constant } from "./constant";
+import { messageSignalType } from "./message/signal/type";
 import { IServerConfig } from "./server/iconfig";
 import { TransportSocket } from "./transport/socket";
 import { TransportWebrtc } from "./transport/webrtc";
-
-import { messageSignalType } from "./message/signal/type";
 
 /**
  * Transport class
@@ -33,13 +32,11 @@ export class Transport extends EventEmitter {
   /**
    * Websocket transport instance
    */
-  // @ts-ignore
   private readonly socket: TransportSocket;
 
   /**
    * Webrtc transport
    */
-  // @ts-ignore
   private readonly webrtc: TransportWebrtc;
 
   /**

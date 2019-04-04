@@ -1,10 +1,8 @@
-// Additional package dependencies
+// Dependencies
+import { Queue, Serialize, Size } from "@coset/common";
 import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
 import * as wrtc from "wrtc";
-
-// Internal dependencies
-import { Queue, Serialize, Size } from "@coset/common";
 
 // Import local dependencies
 import { constant } from "./../constant";
@@ -13,8 +11,18 @@ import { messageSignalType } from "./../message/signal/type";
 import { MessageSocketType } from "./../message/socket/type";
 import { IServerConfig } from "./../server/iconfig";
 
+/**
+ * Package queue interface
+ */
 interface IQueuedPackage {
+  /**
+   * Optional data
+   */
   data?: object;
+
+  /**
+   * Package type
+   */
   type: number;
 }
 
@@ -337,7 +345,7 @@ export class TransportWebrtc {
 
     // Transfer buffer byte by byte
     this.debug("Merging data view into buffer view");
-    for (let i: number = offset; i < dataView.byteLength + offset; i++) {
+    for (let i: number = offset; i < dataView.byteLength + offset; i += 1) {
       bufferView.setInt8(i, dataView.getInt8(i - offset));
     }
 

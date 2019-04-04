@@ -1,7 +1,5 @@
-// Node dependencies
-import { notStrictEqual } from "assert";
-
 // Additional package dependencies
+import { notStrictEqual } from "assert";
 import * as Debug from "debug";
 import * as EventEmitter from "eventemitter3";
 import * as WebSocket from "ws";
